@@ -1,0 +1,328 @@
+/* The Scheduler Plugin Page. One stylesheet, no build step, no framework and
+   no web font: the Host serves these bytes unchanged, so what is here is what
+   a browser gets. It borrows the shape of Nexus's page so that moving between
+   two Plugins in FirstMate's own window does not feel like two programs. */
+
+:root {
+  --ink: #1f2328;
+  --dim: #59636e;
+  --line: #d1d9e0;
+  --paper: #ffffff;
+  --behind: #f6f8fa;
+  --wrong: #cf222e;
+  --wrong-paper: #fff5f5;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  color: var(--ink);
+  background: var(--behind);
+  font: 14px/1.5 ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial,
+    sans-serif;
+}
+
+.hdr {
+  display: flex;
+  align-items: center;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--line);
+  background: var(--paper);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+}
+
+/* The mark: a clock face, drawn rather than fetched. */
+.mark {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--ink);
+  border-radius: 50%;
+  position: relative;
+}
+
+.mark::after {
+  content: '';
+  position: absolute;
+  left: 5px;
+  top: 2px;
+  width: 2px;
+  height: 5px;
+  background: var(--ink);
+}
+
+.page {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.sec-hd h2 {
+  margin: 0 0 10px;
+  font-size: 16px;
+}
+
+.card {
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--paper);
+}
+
+.card.empty {
+  color: var(--dim);
+}
+
+/* A sentence about something that is wrong is the one thing on this page that
+   earns a colour, and it does not rely on the colour to be read. */
+.card.wrong {
+  color: var(--wrong);
+  border-color: var(--wrong);
+  background: var(--wrong-paper);
+}
+
+/* The Jobs are one table, because that is what a list of Jobs is. */
+.jobs {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.jobs th,
+.jobs td {
+  padding: 8px 10px;
+  text-align: left;
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+}
+
+.jobs thead th {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--dim);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.jobs tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.jobs .name {
+  font-weight: 600;
+}
+
+.jobs .calls,
+.jobs .next {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 13px;
+}
+
+/* On and off are words first. The colour only agrees with them. */
+.on,
+.off {
+  font-size: 12px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+}
+
+.on {
+  color: #1a7f37;
+  border-color: #1a7f37;
+}
+
+.off {
+  color: var(--dim);
+}
+
+.jobs .dim {
+  color: var(--dim);
+}
+
+/* An Outcome is a word first. The colour only agrees with the word, and
+   timed-out is deliberately not the failure colour: nothing failed, the
+   Scheduler stopped waiting. */
+.outcome {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 1px 7px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  white-space: nowrap;
+}
+
+.outcome.ok {
+  color: #1a7f37;
+  border-color: #1a7f37;
+}
+
+.outcome.failed {
+  color: var(--wrong);
+  border-color: var(--wrong);
+}
+
+.outcome.timed-out,
+.outcome.skipped {
+  color: #9a6700;
+  border-color: #9a6700;
+}
+
+.said {
+  color: var(--dim);
+}
+
+/* Late is a word, not a colour, because it is the word that explains a 23:40
+   Run of a 09:00 Job. */
+.late {
+  margin-left: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #9a6700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.act {
+  font: inherit;
+  font-size: 13px;
+  padding: 4px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--paper);
+  color: var(--ink);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.act:hover:not(:disabled) {
+  border-color: var(--ink);
+}
+
+.act:disabled {
+  color: var(--dim);
+  cursor: default;
+}
+
+.act.go {
+  background: var(--ink);
+  color: var(--paper);
+  border-color: var(--ink);
+}
+
+.acts {
+  display: flex;
+  gap: 6px;
+}
+
+/* The enable toggle is the on/off word itself, so pressing what it says is
+   what changes it. */
+button.on,
+button.off {
+  font: inherit;
+  cursor: pointer;
+  background: var(--paper);
+}
+
+/* What is wrong, above everything. It carries a colour and a border, and the
+   sentence inside it is the whole message. */
+.banner {
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  border: 1px solid var(--wrong);
+  border-left-width: 4px;
+  border-radius: 6px;
+  background: var(--wrong-paper);
+  color: var(--wrong);
+}
+
+/* --- the form --- */
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field > label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--dim);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.row.top {
+  align-items: stretch;
+}
+
+.input {
+  font: inherit;
+  padding: 6px 9px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.input.wide {
+  flex: 1;
+  min-width: 200px;
+}
+
+.input.mono,
+.schema {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 13px;
+}
+
+.input.mono {
+  flex: 1;
+  min-width: 260px;
+  resize: vertical;
+}
+
+/* The chosen tool's input schema, beside the box and not generated into it. */
+.schema {
+  flex: 1;
+  min-width: 260px;
+  margin: 0;
+  padding: 9px;
+  overflow: auto;
+  max-height: 160px;
+  border: 1px dashed var(--line);
+  border-radius: 6px;
+  color: var(--dim);
+  background: var(--behind);
+}
+
+.check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.hint {
+  color: var(--dim);
+  font-size: 13px;
+}

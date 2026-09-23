@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scheduler</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2032%2032%27%3E%3Ccircle%20cx%3D%2716%27%20cy%3D%2716%27%20r%3D%2712.5%27%20fill%3D%27none%27%20stroke%3D%27%231f2328%27%20stroke-width%3D%273%27%2F%3E%3Cpath%20d%3D%27M16%208.5V16l5%205%27%20fill%3D%27none%27%20stroke%3D%27%231f2328%27%20stroke-width%3D%273%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%2F%3E%3C%2Fsvg%3E">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<header class="hdr">
+  <div class="brand"><span class="mark"></span><span>Scheduler</span></div>
+</header>
+<main class="page">
+  <!-- What is wrong, when something is. Empty and invisible otherwise. -->
+  <div id="banner" class="banner" hidden></div>
+
+  <section class="sec">
+    <div class="sec-hd"><h2>Jobs</h2></div>
+    <!-- What is here before the page has asked. Every sentence after this one
+         is written by app.js out of what list_jobs answered. -->
+    <div id="jobs" class="card empty">Asking the Plugin Server for the Jobs.</div>
+  </section>
+
+  <section class="sec">
+    <div class="sec-hd"><h2>Add a Job</h2></div>
+    <form class="card form" id="form" autocomplete="off">
+      <div class="field">
+        <label for="f-name">Job Name</label>
+        <input class="input" id="f-name" type="text" placeholder="nexus-skills" spellcheck="false" required>
+      </div>
+
+      <div class="field">
+        <label for="f-every">When</label>
+        <div class="row">
+          <select class="input" id="f-every">
+            <option value="hourly">every hour</option>
+            <option value="daily">every day</option>
+            <option value="weekdays" selected>every weekday</option>
+            <option value="weekly">once a week</option>
+          </select>
+          <select class="input" id="f-day" hidden>
+            <option value="monday">Monday</option>
+            <option value="tuesday">Tuesday</option>
+            <option value="wednesday">Wednesday</option>
+            <option value="thursday">Thursday</option>
+            <option value="friday">Friday</option>
+            <option value="saturday">Saturday</option>
+            <option value="sunday">Sunday</option>
+          </select>
+          <input class="input" id="f-at" type="time" value="09:00">
+          <input class="input wide" id="f-zone" type="text" spellcheck="false" placeholder="America/Sao_Paulo">
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="f-plugin">Calls</label>
+        <div class="row">
+          <input class="input" id="f-plugin" type="text" placeholder="nexus" spellcheck="false" required>
+          <button class="act" id="f-ask" type="button">List its tools</button>
+          <select class="input wide" id="f-tool" disabled>
+            <option value="">no tools listed yet</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="f-args">Arguments</label>
+        <div class="row top">
+          <textarea class="input mono" id="f-args" rows="5" spellcheck="false">{}</textarea>
+          <!-- The chosen tool's input schema, beside the box rather than
+               generated into a form: a schema-driven form is a project of its
+               own. -->
+          <pre class="schema" id="f-schema">Choose a tool to see what it expects.</pre>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="f-grace">Grace, in minutes</label>
+        <div class="row">
+          <input class="input" id="f-grace" type="number" min="0" step="1" value="720">
+          <span class="hint">How late this Job may still Run before it is Skipped instead.</span>
+        </div>
+      </div>
+
+      <div class="field">
+        <div class="row">
+          <label class="check"><input id="f-enabled" type="checkbox" checked> Let it Run</label>
+          <button class="act go" id="f-add" type="submit">Add</button>
+        </div>
+      </div>
+    </form>
+  </section>
+</main>
+<script src="app.js"></script>
+</body>
+</html>

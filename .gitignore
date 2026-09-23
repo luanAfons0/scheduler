@@ -1,0 +1,9 @@
+node_modules/
+
+# An agent's worktrees.
+.claude/
+
+# The Plugin's own files. When this repository is also the Plugin directory
+# the Host runs, these are this machine's Jobs and Runs, not the project's.
+jobs.json
+state.json

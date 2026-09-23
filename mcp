@@ -1,0 +1,25 @@
+#!/bin/sh
+# The Host runs this file and speaks MCP to it over stdio. It is a wrapper and
+# nothing else: the entry point is TypeScript, which Node runs with no build
+# step, and a Plugin is a convention rather than a manifest (FirstMate
+# ADR-0002).
+#
+# It looks for a Node rather than trusting `node`, because a service's PATH is
+# not a login shell's. The Host runs under systemd with
+# PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin, which has no nvm on
+# it, so `#!/usr/bin/env node` finds whichever Node the distribution ships —
+# and an old one fails with "Unknown file extension .ts", which says nothing
+# about versions to whoever has to read it.
+here=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+
+for node in ${SCHEDULER_NODE:+"$SCHEDULER_NODE"} \
+            "$(command -v node 2>/dev/null)" \
+            "$HOME"/.nvm/versions/node/*/bin/node; do
+  [ -x "$node" ] || continue
+  major=$("$node" -p 'process.versions.node.split(".")[0]' 2>/dev/null) || continue
+  [ "$major" -ge 24 ] 2>/dev/null || continue
+  exec "$node" "$here/src/main.ts"
+done
+
+echo "scheduler: no Node 24 or newer was found, and this Plugin is TypeScript that Node runs with no build step. Set SCHEDULER_NODE to a Node 24, or start the Host with one on its PATH." >&2
+exit 1

@@ -1,0 +1,19 @@
+{
+  "name": "scheduler",
+  "version": "0.1.0",
+  "description": "A FirstMate Plugin that calls one tool of another Plugin on a clock.",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "test": "node --test",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^5.8.0"
+  }
+}
