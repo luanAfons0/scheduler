@@ -1,36 +1,111 @@
 /* The Scheduler Plugin Page. One stylesheet, no build step, no framework and
    no web font: the Host serves these bytes unchanged, so what is here is what
-   a browser gets. It borrows the shape of Nexus's page so that moving between
-   two Plugins in FirstMate's own window does not feel like two programs. */
+   a browser gets. It borrows Nexus's tokens and shape, light and dark, so that
+   moving between two Plugins in FirstMate's own window does not feel like two
+   programs.
+
+   Every colour is a token on :root and is redefined once for dark, so a rule
+   below names a role and never a hex. */
 
 :root {
+  color-scheme: light dark;
+
+  --canvas: #f6f8fa;
+  --surface: #ffffff;
+  --subtle: #f6f8fa;
   --ink: #1f2328;
-  --dim: #59636e;
-  --line: #d1d9e0;
-  --paper: #ffffff;
-  --behind: #f6f8fa;
-  --wrong: #cf222e;
-  --wrong-paper: #fff5f5;
+  --muted: #656d76;
+  --faint: #8c959f;
+  --line: #d0d7de;
+  --line-soft: #e6e9ec;
+  --code-bg: #eff1f3;
+  --btn-hover: #eef1f4;
+
+  --accent: #0969da;
+  --ok: #1a7f37;
+  --danger: #cf222e;
+  --attention: #9a6700;
+
+  --ok-bg: #dafbe1;
+  --danger-bg: #ffebe9;
+  --attention-bg: #fff8c5;
+  --accent-bg: #ddf4ff;
+
+  --mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --canvas: #010409;
+    --surface: #0d1117;
+    --subtle: #161b22;
+    --ink: #e6edf3;
+    --muted: #8b949e;
+    --faint: #6e7681;
+    --line: #30363d;
+    --line-soft: #21262d;
+    --code-bg: #161b22;
+    --btn-hover: #21262d;
+
+    --accent: #4493f8;
+    --ok: #3fb950;
+    --danger: #f85149;
+    --attention: #d29922;
+
+    --ok-bg: rgba(46, 160, 67, 0.15);
+    --danger-bg: rgba(248, 81, 73, 0.12);
+    --attention-bg: rgba(187, 128, 9, 0.15);
+    --accent-bg: rgba(56, 139, 253, 0.12);
+  }
 }
 
 * {
   box-sizing: border-box;
 }
 
+[hidden] {
+  display: none !important;
+}
+
 body {
   margin: 0;
   color: var(--ink);
-  background: var(--behind);
-  font: 14px/1.5 ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial,
+  background: var(--canvas);
+  font: 14px/1.5 -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial,
     sans-serif;
 }
+
+button {
+  font: inherit;
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: default;
+}
+
+/* One focus ring for everything that takes focus, so a keyboard is never lost. */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+code,
+pre,
+.mono {
+  font-family: var(--mono);
+}
+
+/* --- the header --- */
 
 .hdr {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   padding: 12px 20px;
   border-bottom: 1px solid var(--line);
-  background: var(--paper);
+  background: var(--surface);
 }
 
 .brand {
@@ -59,92 +134,303 @@ body {
   background: var(--ink);
 }
 
+.now {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- the page --- */
+
 .page {
-  max-width: 960px;
+  max-width: 1040px;
   margin: 0 auto;
-  padding: 20px;
+  padding: 24px 20px 48px;
+}
+
+.sec + .sec {
+  margin-top: 28px;
+}
+
+.sec-hd {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 0 0 10px;
 }
 
 .sec-hd h2 {
-  margin: 0 0 10px;
+  margin: 0;
   font-size: 16px;
+  font-weight: 600;
+}
+
+/* The one action a header carries sits at its right end. */
+.push {
+  margin-left: auto;
+  align-self: center;
+}
+
+.sec-note {
+  color: var(--muted);
+  font-size: 13px;
 }
 
 .card {
-  padding: 16px;
   border: 1px solid var(--line);
   border-radius: 6px;
-  background: var(--paper);
+  background: var(--surface);
+}
+
+.card.empty,
+.card.wrong {
+  padding: 16px;
 }
 
 .card.empty {
-  color: var(--dim);
+  color: var(--muted);
 }
 
 /* A sentence about something that is wrong is the one thing on this page that
    earns a colour, and it does not rely on the colour to be read. */
 .card.wrong {
-  color: var(--wrong);
-  border-color: var(--wrong);
-  background: var(--wrong-paper);
+  color: var(--danger);
+  border-color: var(--danger);
+  background: var(--danger-bg);
 }
 
-/* The Jobs are one table, because that is what a list of Jobs is. */
-.jobs {
-  width: 100%;
-  border-collapse: collapse;
+/* What is wrong, above everything. It carries a colour and a border, and the
+   sentence inside it is the whole message. */
+.banner {
+  margin-bottom: 20px;
+  padding: 12px 14px;
+  border: 1px solid var(--danger);
+  border-left-width: 4px;
+  border-radius: 6px;
+  background: var(--danger-bg);
+  color: var(--danger);
 }
 
-.jobs th,
-.jobs td {
-  padding: 8px 10px;
-  text-align: left;
-  border-bottom: 1px solid var(--line);
-  vertical-align: top;
+/* --- up next: the next 24 hours as one ruler --- */
+
+.ahead {
+  padding: 14px 18px 12px;
 }
 
-.jobs thead th {
+/* The ruler is a strip of time. Left is now, right is now plus a day, and
+   every Job that comes Due inside it stands on it as a tick with its name. */
+.ruler {
+  position: relative;
+  height: calc(28px + var(--lanes, 1) * 22px);
+}
+
+.ruler-axis {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 18px;
+  height: 1px;
+  background: var(--line);
+}
+
+.hour {
+  position: absolute;
+  bottom: 0;
+  transform: translateX(-50%);
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--faint);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.hour::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: 18px;
+  width: 1px;
+  height: 5px;
+  background: var(--line);
+}
+
+/* A new day starts at the midnight line, and it is named there. */
+.hour.midnight {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.hour.midnight::before {
+  height: 9px;
+  background: var(--muted);
+}
+
+.tick {
+  position: absolute;
+  bottom: 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  border-left: 2px solid var(--accent);
+  padding-left: 6px;
+  height: calc(10px + var(--lane) * 22px + 18px);
+  white-space: nowrap;
+}
+
+.tick-label {
   font-size: 12px;
+  line-height: 16px;
+  color: var(--ink);
+  background: var(--surface);
+  padding-right: 4px;
+}
+
+.tick-label b {
+  font-family: var(--mono);
   font-weight: 600;
-  color: var(--dim);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent);
+  margin-right: 6px;
 }
 
-.jobs tbody tr:last-child td {
-  border-bottom: none;
+/* A tick past the middle of the ruler reads leftwards, so its name never runs
+   off the right edge. */
+.tick.flip {
+  align-items: flex-end;
+  border-left: 0;
+  border-right: 2px solid var(--accent);
+  padding-left: 0;
+  padding-right: 6px;
+  transform: translateX(-100%);
 }
 
-.jobs .name {
-  font-weight: 600;
+.tick.flip .tick-label {
+  padding-right: 0;
+  padding-left: 4px;
 }
 
-.jobs .calls,
-.jobs .next {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+.now-line {
+  position: absolute;
+  left: 0;
+  bottom: 14px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--ink);
+  transform: translateX(-4px);
+}
+
+.ahead-later {
+  margin: 10px 0 0;
+  padding-top: 10px;
+  border-top: 1px solid var(--line-soft);
+  color: var(--muted);
   font-size: 13px;
 }
 
-/* On and off are words first. The colour only agrees with them. */
-.on,
-.off {
+.ahead-later b {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+/* --- the Jobs --- */
+
+/* A Job reads like a line of a timetable: when it next comes Due, big, on
+   the left; what it is and how it last went beside it; what you can do to it
+   on the right. */
+.job {
+  display: grid;
+  grid-template-columns: 132px minmax(0, 1fr) auto;
+  gap: 4px 20px;
+  padding: 16px 18px;
+}
+
+.job + .job {
+  border-top: 1px solid var(--line-soft);
+}
+
+.due {
+  display: flex;
+  flex-direction: column;
+  font-variant-numeric: tabular-nums;
+}
+
+.due-time {
+  font-family: var(--mono);
+  font-size: 26px;
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+.due-day {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.due-in {
+  color: var(--accent);
   font-size: 12px;
-  padding: 1px 7px;
-  border-radius: 999px;
-  border: 1px solid var(--line);
+  font-weight: 600;
 }
 
-.on {
-  color: #1a7f37;
-  border-color: #1a7f37;
+/* A Job that is off has no next Due time, and looks it. */
+.job.off .due-time,
+.job.off .name {
+  color: var(--faint);
 }
 
-.off {
-  color: var(--dim);
+.job-hd {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
-.jobs .dim {
-  color: var(--dim);
+.name {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.meta {
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.meta code {
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--code-bg);
+  color: var(--ink);
+  font-size: 12px;
+}
+
+.last {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  margin-top: 10px;
+  font-size: 13px;
+}
+
+.last-at {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.said {
+  flex-basis: 100%;
+  color: var(--muted);
+  overflow-wrap: anywhere;
 }
 
 /* An Outcome is a word first. The colour only agrees with the word, and
@@ -153,94 +439,166 @@ body {
 .outcome {
   font-size: 12px;
   font-weight: 600;
-  padding: 1px 7px;
+  padding: 0 8px;
   border-radius: 999px;
-  border: 1px solid var(--line);
+  border: 1px solid currentColor;
   white-space: nowrap;
 }
 
 .outcome.ok {
-  color: #1a7f37;
-  border-color: #1a7f37;
+  color: var(--ok);
+  background: var(--ok-bg);
 }
 
 .outcome.failed {
-  color: var(--wrong);
-  border-color: var(--wrong);
+  color: var(--danger);
+  background: var(--danger-bg);
 }
 
 .outcome.timed-out,
 .outcome.skipped {
-  color: #9a6700;
-  border-color: #9a6700;
-}
-
-.said {
-  color: var(--dim);
+  color: var(--attention);
+  background: var(--attention-bg);
 }
 
 /* Late is a word, not a colour, because it is the word that explains a 23:40
    Run of a 09:00 Job. */
 .late {
-  margin-left: 6px;
   font-size: 11px;
   font-weight: 600;
-  color: #9a6700;
+  color: var(--attention);
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
 
-.act {
-  font: inherit;
-  font-size: 13px;
-  padding: 4px 10px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  background: var(--paper);
-  color: var(--ink);
-  cursor: pointer;
-  white-space: nowrap;
+/* The Runs kept, oldest first, one mark each. The mark's shape says the
+   Outcome as well as its colour, so it reads without colour too. */
+.runs {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
 }
 
-.act:hover:not(:disabled) {
-  border-color: var(--ink);
+.runs li {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
 }
 
-.act:disabled {
-  color: var(--dim);
-  cursor: default;
+.runs .ok {
+  background: var(--ok);
 }
 
-.act.go {
-  background: var(--ink);
-  color: var(--paper);
-  border-color: var(--ink);
+.runs .failed {
+  background: var(--danger);
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+}
+
+.runs .timed-out,
+.runs .skipped {
+  border: 2px solid var(--attention);
+  border-radius: 50%;
+}
+
+.runs-label {
+  margin-left: 6px;
+  color: var(--faint);
+  font-size: 12px;
 }
 
 .acts {
   display: flex;
+  align-items: flex-start;
   gap: 6px;
 }
 
-/* The enable toggle is the on/off word itself, so pressing what it says is
-   what changes it. */
-button.on,
-button.off {
-  font: inherit;
-  cursor: pointer;
-  background: var(--paper);
+/* --- the switch: on and off are words first, the track only agrees --- */
+
+.switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 1px 8px 1px 3px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
 }
 
-/* What is wrong, above everything. It carries a colour and a border, and the
-   sentence inside it is the whole message. */
-.banner {
-  margin-bottom: 16px;
-  padding: 12px 14px;
-  border: 1px solid var(--wrong);
-  border-left-width: 4px;
+.switch::before {
+  content: '';
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--faint);
+}
+
+.switch[aria-checked='true'] {
+  color: var(--ok);
+  border-color: var(--ok);
+  background: var(--ok-bg);
+}
+
+.switch[aria-checked='true']::before {
+  background: var(--ok);
+}
+
+.switch:hover:not(:disabled) {
+  border-color: var(--ink);
+}
+
+/* --- buttons --- */
+
+.act {
+  font-size: 13px;
+  padding: 5px 12px;
+  border: 1px solid var(--line);
   border-radius: 6px;
-  background: var(--wrong-paper);
-  color: var(--wrong);
+  background: var(--subtle);
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.act:hover:not(:disabled) {
+  background: var(--btn-hover);
+  border-color: var(--faint);
+}
+
+.act:disabled {
+  color: var(--muted);
+}
+
+.act.go {
+  background: var(--ink);
+  color: var(--surface);
+  border-color: var(--ink);
+  font-weight: 600;
+  padding: 6px 16px;
+}
+
+.act.go:hover:not(:disabled) {
+  background: var(--ink);
+  opacity: 0.88;
+}
+
+/* Remove asks once more before it removes, and says in red what it will do. */
+.act.danger {
+  color: var(--danger);
+}
+
+.act.armed {
+  color: var(--surface);
+  background: var(--danger);
+  border-color: var(--danger);
+}
+
+.act.armed:hover:not(:disabled) {
+  background: var(--danger);
 }
 
 /* --- the form --- */
@@ -248,21 +606,38 @@ button.off {
 .form {
   display: flex;
   flex-direction: column;
+  gap: 18px;
+  padding: 18px;
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
   gap: 14px;
+  margin: 0;
+  padding: 16px 0 0;
+  border: 0;
+  border-top: 1px solid var(--line-soft);
+}
+
+.group legend {
+  padding: 0 8px 0 0;
+  font-size: 13px;
+  font-weight: 600;
 }
 
 .field {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  min-width: 0;
 }
 
-.field > label {
+.field > label,
+.field > .label {
   font-size: 12px;
   font-weight: 600;
-  color: var(--dim);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  color: var(--muted);
 }
 
 .row {
@@ -272,17 +647,30 @@ button.off {
   flex-wrap: wrap;
 }
 
-.row.top {
-  align-items: stretch;
+.pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
 }
 
 .input {
   font: inherit;
-  padding: 6px 9px;
+  min-height: 34px;
+  padding: 6px 10px;
   border: 1px solid var(--line);
   border-radius: 6px;
-  background: var(--paper);
+  background: var(--surface);
   color: var(--ink);
+}
+
+.input:focus-visible {
+  outline-offset: 0;
+  border-color: var(--accent);
+}
+
+.input:disabled {
+  color: var(--muted);
+  background: var(--subtle);
 }
 
 .input.wide {
@@ -290,39 +678,145 @@ button.off {
   min-width: 200px;
 }
 
-.input.mono,
-.schema {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+.input.mono {
+  font-family: var(--mono);
+  font-size: 13px;
+  resize: vertical;
+  min-height: 150px;
+}
+
+/* An input and the button that acts on it, as one control. */
+.joined {
+  display: flex;
+}
+
+.joined .input {
+  width: 180px;
+  border-radius: 6px 0 0 6px;
+}
+
+.joined .act {
+  border-left: 0;
+  border-radius: 0 6px 6px 0;
+}
+
+.joiner {
+  color: var(--muted);
   font-size: 13px;
 }
 
-.input.mono {
-  flex: 1;
-  min-width: 260px;
-  resize: vertical;
+.suffixed {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+}
+
+.suffixed:focus-within {
+  border-color: var(--accent);
+}
+
+.suffixed .input {
+  width: 90px;
+  border: 0;
+  outline: none;
+}
+
+.suffixed span {
+  padding: 0 10px 0 2px;
+  color: var(--muted);
+  font-size: 13px;
 }
 
 /* The chosen tool's input schema, beside the box and not generated into it. */
 .schema {
   flex: 1;
-  min-width: 260px;
+  min-height: 150px;
+  max-height: 220px;
   margin: 0;
-  padding: 9px;
+  padding: 9px 10px;
   overflow: auto;
-  max-height: 160px;
   border: 1px dashed var(--line);
   border-radius: 6px;
-  color: var(--dim);
-  background: var(--behind);
+  background: var(--subtle);
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.hint {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line-soft);
 }
 
 .check {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
 }
 
-.hint {
-  color: var(--dim);
-  font-size: 13px;
+.check input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--ok);
+}
+
+/* --- a phone, or a narrow window --- */
+
+@media (max-width: 720px) {
+  .page {
+    padding: 16px 16px 40px;
+  }
+
+  .job {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .due {
+    flex-direction: row;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 0 10px;
+  }
+
+  .due-day {
+    margin-top: 0;
+  }
+
+  .pair {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .joined {
+    flex: 1;
+  }
+
+  .joined .input {
+    flex: 1;
+    width: auto;
+    min-width: 0;
+  }
+
+  .hour:nth-child(even of .hour) {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .act,
+  .switch,
+  .input {
+    transition: border-color 120ms, background-color 120ms;
+  }
 }

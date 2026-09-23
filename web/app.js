@@ -82,49 +82,151 @@ function show(node, text, kind) {
   node.textContent = text;
 }
 
-// --- the table ------------------------------------------------------------
+// --- time -----------------------------------------------------------------
 
-/** A moment, read on the clock of the zone that Job records. */
-function moment(when, at) {
-  if (at === null || at === undefined) return null;
-  return new Date(at).toLocaleString('en-GB', {
-    timeZone: when.timezone,
-    weekday: 'short',
-    day: '2-digit',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  });
+const MINUTE = 60 * 1000;
+const HOUR = 60 * MINUTE;
+const DAY = 24 * HOUR;
+
+/** The last list_jobs answer, so the clock can redraw it without asking again. */
+let listed = null;
+
+/** A moment's parts, read on the clock of the zone that Job records. */
+function parts(at, timezone, options) {
+  const out = {};
+  const format = new Intl.DateTimeFormat('en-GB', { timeZone: timezone, ...options });
+  for (const part of format.formatToParts(new Date(at))) out[part.type] = part.value;
+  return out;
 }
 
-/** The last Run, as the two cells that say whether it worked. */
-function result(job) {
-  const run = job.lastRun;
-  if (run === null) {
-    return [
-      el('td', { class: 'next', text: 'never' }),
-      el('td', { class: 'dim', text: 'nothing has run yet' }),
-    ];
+/** 09:00, on the Job's own clock. */
+function clock(at, timezone) {
+  const p = parts(at, timezone, { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+  return p.hour + ':' + p.minute;
+}
+
+/** Wed 23 Sep, on the Job's own clock. */
+function day(at, timezone) {
+  const p = parts(at, timezone, { weekday: 'short', day: 'numeric', month: 'short' });
+  return p.weekday + ' ' + p.day + ' ' + p.month;
+}
+
+/** How far a moment is from now, in the two largest units that matter. */
+function until(at) {
+  const left = new Date(at).getTime() - Date.now();
+  if (left <= 0) return 'Due now';
+  const days = Math.floor(left / DAY);
+  const hours = Math.floor((left % DAY) / HOUR);
+  const minutes = Math.ceil((left % HOUR) / MINUTE);
+  if (days > 0) return 'in ' + days + 'd ' + hours + 'h';
+  if (hours > 0) return 'in ' + hours + 'h ' + minutes + 'm';
+  return 'in ' + minutes + 'm';
+}
+
+// --- up next: the ruler ---------------------------------------------------
+
+/** The machine's own zone. The ruler is read on it, because it is one clock. */
+const HERE = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+
+/** How many rows the tick labels may stack into before they give up. */
+const LANES = 3;
+
+function drawAhead() {
+  const node = byId('ahead');
+  const note = byId('ahead-note');
+  if (listed === null || listed.jobs.length === 0) {
+    node.hidden = true;
+    note.textContent = '';
+    return;
   }
-  return [
-    el('td', { class: 'next' }, [
-      moment(job.when, run.started),
-      // A Late Run is one that started after its Due time, because the Host
-      // was not up when the time arrived. Saying so is what makes a 23:40 Run
-      // of a 09:00 Job explain itself.
-      run.late ? el('span', { class: 'late', text: 'Late' }) : null,
-    ]),
-    el('td', {}, [
-      // The Outcome is a word before it is a colour, so it reads the same
-      // without one. `timed-out` is not a failure: the tool may still be
-      // running, and the sentence beside it says so.
-      el('span', { class: 'outcome ' + run.outcome, text: run.outcome }),
-      ' ',
-      el('span', { class: 'said', text: run.said }),
-    ]),
-  ];
+  node.hidden = false;
+  note.textContent = 'the next 24 hours, ' + HERE;
+
+  const now = Date.now();
+  const coming = listed.jobs
+    .filter((job) => job.nextDue !== null)
+    .map((job) => ({ job: job, at: new Date(job.nextDue).getTime() }))
+    .sort((a, b) => a.at - b.at);
+  const inside = coming.filter((one) => one.at - now < DAY);
+  const later = coming.filter((one) => one.at - now >= DAY);
+
+  const where = (at) => Math.min(100, Math.max(0, ((at - now) / DAY) * 100));
+
+  // Hour marks every three hours of this machine's clock, and the midnight
+  // one named by its day, so a tick past it says tomorrow without a word.
+  const hours = [];
+  const first = new Date(now);
+  first.setMinutes(0, 0, 0);
+  for (let at = first.getTime() + HOUR; at < now + DAY; at += HOUR) {
+    const hour = new Date(at).getHours();
+    if (hour % 3 !== 0) continue;
+    const midnight = hour === 0;
+    const mark = el('span', {
+      class: 'hour' + (midnight ? ' midnight' : ''),
+      text: midnight ? day(at, HERE) : clock(at, HERE),
+    });
+    mark.style.left = where(at) + '%';
+    hours.push(mark);
+  }
+
+  // A label goes on the lowest lane where it does not run into the one
+  // before it. Past the last lane it shares, which is rare and still legible.
+  // A label's width is guessed from its letters, as a share of the ruler, so
+  // a phone stacks labels that a wide window sets side by side.
+  const across = Math.max(1, node.clientWidth - 36);
+  const ends = new Array(LANES).fill(-Infinity);
+  const ticks = inside.map((one) => {
+    const x = where(one.at);
+    const flip = x > 60;
+    const wide = ((one.job.name.length + 6) * 7.5 + 16) / across * 100;
+    let lane = ends.findIndex((end) => (flip ? x - wide : x) > end);
+    if (lane === -1) lane = LANES - 1;
+    ends[lane] = flip ? x : x + wide;
+    const tick = el('div', { class: 'tick' + (flip ? ' flip' : ''), title: one.job.whenSaid }, [
+      el('span', { class: 'tick-label' }, [
+        el('b', { text: clock(one.at, HERE) }),
+        one.job.name,
+      ]),
+    ]);
+    tick.style.left = x + '%';
+    tick.style.setProperty('--lane', String(lane));
+    return tick;
+  });
+  const used = Math.max(1, ...ends.map((end, lane) => (end === -Infinity ? 0 : lane + 1)));
+
+  const ruler = el('div', { class: 'ruler', role: 'img' }, [
+    el('div', { class: 'ruler-axis' }),
+    ...hours,
+    ...ticks,
+    el('span', { class: 'now-line', title: 'now' }),
+  ]);
+  ruler.style.setProperty('--lanes', String(used));
+  ruler.setAttribute(
+    'aria-label',
+    inside.length === 0
+      ? 'Nothing comes Due in the next 24 hours.'
+      : inside.map((one) => one.job.name + ' at ' + clock(one.at, HERE)).join(', '),
+  );
+
+  const children = [ruler];
+  if (inside.length === 0) {
+    children.push(el('p', { class: 'ahead-later', text: 'Nothing comes Due in the next 24 hours.' }));
+  } else if (later.length > 0) {
+    children.push(
+      el('p', { class: 'ahead-later' }, [
+        'Later: ',
+        ...later.flatMap((one, index) => [
+          index > 0 ? ', ' : '',
+          el('b', { text: one.job.name }),
+          ' ' + day(one.at, one.job.when.timezone) + ' ' + clock(one.at, one.job.when.timezone),
+        ]),
+      ]),
+    );
+  }
+  node.replaceChildren(...children);
 }
+
+// --- the Jobs -------------------------------------------------------------
 
 function button(text, kind, onClick) {
   const node = el('button', { class: 'act ' + (kind || ''), type: 'button', text: text });
@@ -132,11 +234,15 @@ function button(text, kind, onClick) {
   return node;
 }
 
+/** Whether a write is in flight, so the clock does not redraw under it. */
+let busy = false;
+
 /** One write, with the page put back the way it was if it is refused. */
-async function write(node, busy, work) {
+async function write(node, doing, work) {
   const was = node.textContent;
   node.disabled = true;
-  node.textContent = busy;
+  node.textContent = doing;
+  busy = true;
   say(null);
   try {
     await work();
@@ -145,78 +251,195 @@ async function write(node, busy, work) {
     node.disabled = false;
     node.textContent = was;
     say(fault.message);
+  } finally {
+    busy = false;
   }
 }
 
-function row(job) {
-  const next = moment(job.when, job.nextDue);
-  return el('tr', {}, [
-    el('td', { class: 'name', text: job.name }),
-    el('td', { text: job.whenSaid }),
-    el('td', { class: 'calls', text: job.plugin + ' / ' + job.tool }),
-    el('td', {}, [
-      // The word carries the state, so nothing here is readable by colour
-      // alone, and pressing it is how a Job is paused without retyping it.
-      button(job.enabled ? 'on' : 'off', job.enabled ? 'on' : 'off', (event) =>
-        write(event.currentTarget, '…', () =>
-          call('enable_job', { name: job.name, enabled: !job.enabled, ifMatch: hash }),
-        ),
-      ),
+/** The one Remove that is asking to be pressed again, if any. */
+let armed = null;
+
+/** Remove asks once more before it removes, and forgets it asked after a while. */
+function removeButton(job) {
+  const node = button('Remove', 'danger', () => {
+    if (armed !== node) {
+      disarm();
+      armed = node;
+      node.classList.add('armed');
+      node.textContent = 'Remove ' + job.name + '?';
+      node.dataset.timer = String(setTimeout(disarm, 4000));
+      return;
+    }
+    clearTimeout(Number(node.dataset.timer));
+    armed = null;
+    write(node, 'removing…', () => call('remove_job', { name: job.name, ifMatch: hash }));
+  });
+  node.addEventListener('blur', () => {
+    if (armed === node) disarm();
+  });
+  return node;
+}
+
+function disarm() {
+  if (armed === null) return;
+  clearTimeout(Number(armed.dataset.timer));
+  armed.classList.remove('armed');
+  armed.textContent = 'Remove';
+  armed = null;
+}
+
+/** When the Job next comes Due, big, on the Job's own clock. */
+function due(job) {
+  if (job.nextDue === null) {
+    return el('div', { class: 'due' }, [
+      el('span', { class: 'due-time', text: '--:--' }),
+      el('span', { class: 'due-day', text: 'off, so never' }),
+    ]);
+  }
+  return el('div', { class: 'due' }, [
+    el('span', { class: 'due-time', text: clock(job.nextDue, job.when.timezone) }),
+    el('span', { class: 'due-day', text: day(job.nextDue, job.when.timezone) }),
+    el('span', { class: 'due-in', 'data-at': job.nextDue, text: until(job.nextDue) }),
+  ]);
+}
+
+/** The last Run, as the sentence that says whether it worked. */
+function last(job) {
+  const run = job.lastRun;
+  if (run === null) return el('div', { class: 'last said', text: 'Nothing has Run yet.' });
+  const zone = job.when.timezone;
+  return el('div', { class: 'last' }, [
+    // The Outcome is a word before it is a colour, so it reads the same
+    // without one. `timed-out` is not a failure: the tool may still be
+    // running, and the sentence beside it says so.
+    el('span', { class: 'outcome ' + run.outcome, text: run.outcome }),
+    el('span', { class: 'last-at', text: day(run.started, zone) + ', ' + clock(run.started, zone) }),
+    // A Late Run is one that started after its Due time, because the Host
+    // was not up when the time arrived. Saying so is what makes a 23:40 Run
+    // of a 09:00 Job explain itself.
+    run.late ? el('span', { class: 'late', text: 'Late' }) : null,
+    el('span', { class: 'said', text: run.said }),
+  ]);
+}
+
+/** Every Run kept, oldest first, one mark each, with the sentence on hover. */
+function history(job) {
+  const runs = job.runs || [];
+  if (runs.length < 2) return null;
+  const zone = job.when.timezone;
+  return el('ol', { class: 'runs', 'aria-label': 'The last ' + runs.length + ' Runs' }, [
+    ...runs.map((run) =>
+      el('li', {
+        class: run.outcome,
+        title:
+          day(run.started, zone) + ' ' + clock(run.started, zone) + ' · ' + run.outcome +
+          (run.late ? ' · Late' : '') + ' · ' + run.said,
+      }),
+    ),
+    el('span', { class: 'runs-label', text: 'last ' + runs.length + ' Runs' }),
+  ]);
+}
+
+function card(job) {
+  return el('article', { class: 'job' + (job.enabled ? '' : ' off') }, [
+    due(job),
+    el('div', { class: 'body' }, [
+      el('div', { class: 'job-hd' }, [
+        el('h3', { class: 'name', text: job.name }),
+        // The word carries the state, so nothing here is readable by colour
+        // alone, and pressing it is how a Job is paused without retyping it.
+        (() => {
+          const node = el('button', {
+            class: 'switch',
+            type: 'button',
+            role: 'switch',
+            'aria-checked': String(job.enabled),
+            'aria-label': 'Let ' + job.name + ' Run',
+            text: job.enabled ? 'On' : 'Off',
+          });
+          node.addEventListener('click', () =>
+            write(node, '…', () =>
+              call('enable_job', { name: job.name, enabled: !job.enabled, ifMatch: hash }),
+            ),
+          );
+          return node;
+        })(),
+      ]),
+      el('p', { class: 'meta' }, [
+        job.whenSaid + ' · calls ',
+        el('code', { text: job.plugin + ' / ' + job.tool }),
+      ]),
+      last(job),
+      history(job),
     ]),
-    ...result(job),
-    el('td', { class: 'next', text: next === null ? 'never, while it is off' : next }),
-    el('td', { class: 'acts' }, [
+    el('div', { class: 'acts' }, [
       button('Run now', null, (event) =>
         write(event.currentTarget, 'running…', () => call('run_job', { name: job.name })),
       ),
-      button('Remove', null, (event) =>
-        write(event.currentTarget, '…', () =>
-          call('remove_job', { name: job.name, ifMatch: hash }),
-        ),
-      ),
+      removeButton(job),
     ]),
   ]);
 }
 
 /** Draw the Jobs, whatever they turned out to be. */
-function draw(listed) {
+function draw(answer) {
   const node = byId('jobs');
-  hash = listed.hash;
+  listed = answer;
+  hash = answer.hash;
+  armed = null;
   // A jobs file that went wrong while the Plugin is running keeps the last
   // good Jobs. The Page is where that is said, because the Plugin Server did
   // not stop and the journal has nothing new in it.
-  say(listed.problem);
+  say(answer.problem);
+  drawAhead();
 
-  if (listed.jobs.length === 0) {
-    show(node, 'There are no Jobs yet.');
+  const count = answer.jobs.length;
+  const on = answer.jobs.filter((job) => job.enabled).length;
+  byId('jobs-count').textContent =
+    count === 0 ? '' : count + (count === 1 ? ' Job' : ' Jobs') + ', ' + on + ' on';
+
+  if (count === 0) {
+    show(node, 'There are no Jobs yet. Press New Job to add one, or write it into jobs.json.');
     return;
   }
+  // Sorted by what comes Due first, the way a timetable is read. A Job that
+  // is off has no time and goes last.
+  const order = [...answer.jobs].sort((a, b) => {
+    if (a.nextDue === null) return b.nextDue === null ? 0 : 1;
+    if (b.nextDue === null) return -1;
+    return new Date(a.nextDue).getTime() - new Date(b.nextDue).getTime();
+  });
   node.className = 'card';
-  node.replaceChildren(
-    el('table', { class: 'jobs' }, [
-      el('thead', {}, [
-        el('tr', {}, [
-          el('th', { text: 'Job' }),
-          el('th', { text: 'When' }),
-          el('th', { text: 'Calls' }),
-          el('th', { text: 'Enabled' }),
-          el('th', { text: 'Last run' }),
-          el('th', { text: 'Result' }),
-          el('th', { text: 'Next run' }),
-          el('th', { text: '' }),
-        ]),
-      ]),
-      el('tbody', {}, listed.jobs.map(row)),
-    ]),
-  );
+  node.replaceChildren(...order.map(card));
 }
 
 async function load() {
   try {
     draw(await call('list_jobs', {}));
   } catch (fault) {
+    listed = null;
+    drawAhead();
     show(byId('jobs'), fault.message, 'wrong');
   }
+}
+
+/** The page's own second hand: the countdowns and the ruler move with now. */
+function tick() {
+  byId('now').textContent = 'now ' + clock(Date.now(), HERE) + ' · ' + HERE;
+  for (const node of document.querySelectorAll('.due-in[data-at]')) {
+    node.textContent = until(node.dataset.at);
+  }
+  drawAhead();
+}
+
+/**
+ * Ask again once a minute while the page is in view, so a Run the clock made
+ * shows up without a reload. Never under a write, and never under a Remove
+ * that is waiting to be pressed again.
+ */
+function refresh() {
+  if (document.hidden || busy || armed !== null) return;
+  load();
 }
 
 // --- the form -------------------------------------------------------------
@@ -229,6 +452,7 @@ function shapeWhen() {
   const every = byId('f-every').value;
   byId('f-day').hidden = every !== 'weekly';
   byId('f-at').hidden = every === 'hourly';
+  byId('f-at-word').hidden = every === 'hourly';
 }
 
 function showSchema() {
@@ -311,7 +535,21 @@ async function add(event) {
     await call('add_job', { job: job, ifMatch: hash });
     byId('f-name').value = '';
     byId('f-args').value = '{}';
+    compose(false);
   });
+}
+
+/** Show or hide the form. A Job added, or a Cancel, puts it away again. */
+function compose(open) {
+  byId('add').hidden = !open;
+  byId('new-job').hidden = open;
+  byId('new-job').setAttribute('aria-expanded', String(open));
+  if (open) {
+    byId('add').scrollIntoView({ block: 'start' });
+    byId('f-name').focus({ preventScroll: true });
+  } else {
+    byId('new-job').focus({ preventScroll: true });
+  }
 }
 
 function start() {
@@ -321,8 +559,17 @@ function start() {
   byId('f-tool').addEventListener('change', showSchema);
   byId('f-ask').addEventListener('click', (event) => askForTools(event.currentTarget));
   byId('form').addEventListener('submit', add);
+  byId('new-job').addEventListener('click', () => compose(true));
+  byId('f-cancel').addEventListener('click', () => compose(false));
+  byId('form').addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') compose(false);
+  });
   shapeWhen();
+  tick();
   load();
+  setInterval(tick, 15 * 1000);
+  setInterval(refresh, 60 * 1000);
+  document.addEventListener('visibilitychange', refresh);
 }
 
 start();

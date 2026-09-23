@@ -3,90 +3,127 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
 <title>Scheduler</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2032%2032%27%3E%3Ccircle%20cx%3D%2716%27%20cy%3D%2716%27%20r%3D%2712.5%27%20fill%3D%27none%27%20stroke%3D%27%231f2328%27%20stroke-width%3D%273%27%2F%3E%3Cpath%20d%3D%27M16%208.5V16l5%205%27%20fill%3D%27none%27%20stroke%3D%27%231f2328%27%20stroke-width%3D%273%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%2F%3E%3C%2Fsvg%3E">
 <link rel="stylesheet" href="app.css">
 </head>
 <body>
 <header class="hdr">
-  <div class="brand"><span class="mark"></span><span>Scheduler</span></div>
+  <div class="brand"><span class="mark" aria-hidden="true"></span><span>Scheduler</span></div>
+  <!-- The machine's own clock, so "in 1h 19m" has something to be read against. -->
+  <div class="now" id="now" aria-live="off"></div>
 </header>
 <main class="page">
   <!-- What is wrong, when something is. Empty and invisible otherwise. -->
-  <div id="banner" class="banner" hidden></div>
+  <div id="banner" class="banner" role="alert" hidden></div>
 
-  <section class="sec">
-    <div class="sec-hd"><h2>Jobs</h2></div>
+  <section class="sec" aria-labelledby="ahead-hd">
+    <div class="sec-hd">
+      <h2 id="ahead-hd">Up next</h2>
+      <span class="sec-note" id="ahead-note"></span>
+    </div>
+    <!-- The next 24 hours as one ruler: a line for now, a tick for every Job
+         that comes Due inside it. Drawn by app.js from list_jobs. -->
+    <div id="ahead" class="card ahead" hidden></div>
+  </section>
+
+  <section class="sec" aria-labelledby="jobs-hd">
+    <div class="sec-hd">
+      <h2 id="jobs-hd">Jobs</h2>
+      <span class="sec-note" id="jobs-count"></span>
+      <!-- The form stays out of sight until somebody means to add a Job. -->
+      <button class="act go push" id="new-job" type="button" aria-controls="add" aria-expanded="false">New Job</button>
+    </div>
     <!-- What is here before the page has asked. Every sentence after this one
          is written by app.js out of what list_jobs answered. -->
     <div id="jobs" class="card empty">Asking the Plugin Server for the Jobs.</div>
   </section>
 
-  <section class="sec">
-    <div class="sec-hd"><h2>Add a Job</h2></div>
+  <section class="sec" id="add" aria-labelledby="add-hd" hidden>
+    <div class="sec-hd"><h2 id="add-hd">Add a Job</h2></div>
     <form class="card form" id="form" autocomplete="off">
       <div class="field">
-        <label for="f-name">Job Name</label>
+        <label for="f-name">Name</label>
         <input class="input" id="f-name" type="text" placeholder="nexus-skills" spellcheck="false" required>
       </div>
 
-      <div class="field">
-        <label for="f-every">When</label>
-        <div class="row">
-          <select class="input" id="f-every">
-            <option value="hourly">every hour</option>
-            <option value="daily">every day</option>
-            <option value="weekdays" selected>every weekday</option>
-            <option value="weekly">once a week</option>
-          </select>
-          <select class="input" id="f-day" hidden>
-            <option value="monday">Monday</option>
-            <option value="tuesday">Tuesday</option>
-            <option value="wednesday">Wednesday</option>
-            <option value="thursday">Thursday</option>
-            <option value="friday">Friday</option>
-            <option value="saturday">Saturday</option>
-            <option value="sunday">Sunday</option>
-          </select>
-          <input class="input" id="f-at" type="time" value="09:00">
-          <input class="input wide" id="f-zone" type="text" spellcheck="false" placeholder="America/Sao_Paulo">
+      <fieldset class="group">
+        <legend>What it calls</legend>
+        <div class="field">
+          <label for="f-plugin">Plugin and tool</label>
+          <div class="row">
+            <div class="joined">
+              <input class="input" id="f-plugin" type="text" placeholder="nexus" spellcheck="false" required>
+              <button class="act" id="f-ask" type="button">List its tools</button>
+            </div>
+            <select class="input wide" id="f-tool" disabled>
+              <option value="">List a Plugin's tools first</option>
+            </select>
+          </div>
         </div>
-      </div>
 
-      <div class="field">
-        <label for="f-plugin">Calls</label>
-        <div class="row">
-          <input class="input" id="f-plugin" type="text" placeholder="nexus" spellcheck="false" required>
-          <button class="act" id="f-ask" type="button">List its tools</button>
-          <select class="input wide" id="f-tool" disabled>
-            <option value="">no tools listed yet</option>
-          </select>
+        <div class="field">
+          <div class="pair">
+            <div class="field">
+              <label for="f-args">Arguments, as JSON</label>
+              <textarea class="input mono" id="f-args" rows="6" spellcheck="false">{}</textarea>
+            </div>
+            <!-- The chosen tool's input schema, beside the box rather than
+                 generated into a form: a schema-driven form is a project of
+                 its own. -->
+            <div class="field">
+              <span class="label" id="f-schema-for">What the tool expects</span>
+              <pre class="schema" id="f-schema" aria-labelledby="f-schema-for">Choose a tool to see what it expects.</pre>
+            </div>
+          </div>
         </div>
-      </div>
+      </fieldset>
 
-      <div class="field">
-        <label for="f-args">Arguments</label>
-        <div class="row top">
-          <textarea class="input mono" id="f-args" rows="5" spellcheck="false">{}</textarea>
-          <!-- The chosen tool's input schema, beside the box rather than
-               generated into a form: a schema-driven form is a project of its
-               own. -->
-          <pre class="schema" id="f-schema">Choose a tool to see what it expects.</pre>
+      <fieldset class="group">
+        <legend>When it runs</legend>
+        <div class="field">
+          <label for="f-every">Every</label>
+          <div class="row">
+            <select class="input" id="f-every">
+              <option value="hourly">every hour</option>
+              <option value="daily">every day</option>
+              <option value="weekdays" selected>every weekday</option>
+              <option value="weekly">once a week</option>
+            </select>
+            <select class="input" id="f-day" aria-label="Day" hidden>
+              <option value="monday">Monday</option>
+              <option value="tuesday">Tuesday</option>
+              <option value="wednesday">Wednesday</option>
+              <option value="thursday">Thursday</option>
+              <option value="friday">Friday</option>
+              <option value="saturday">Saturday</option>
+              <option value="sunday">Sunday</option>
+            </select>
+            <span class="joiner" id="f-at-word">at</span>
+            <input class="input" id="f-at" type="time" value="09:00" aria-label="Time">
+            <span class="joiner">in</span>
+            <input class="input wide" id="f-zone" type="text" spellcheck="false" placeholder="America/Sao_Paulo" aria-label="Time zone">
+          </div>
         </div>
-      </div>
 
-      <div class="field">
-        <label for="f-grace">Grace, in minutes</label>
-        <div class="row">
-          <input class="input" id="f-grace" type="number" min="0" step="1" value="720">
-          <span class="hint">How late this Job may still Run before it is Skipped instead.</span>
+        <div class="field">
+          <label for="f-grace">Grace</label>
+          <div class="row">
+            <div class="suffixed">
+              <input class="input" id="f-grace" type="number" min="0" step="1" value="720">
+              <span>min</span>
+            </div>
+            <span class="hint">How late this Job may still Run before it is Skipped instead.</span>
+          </div>
         </div>
-      </div>
+      </fieldset>
 
-      <div class="field">
-        <div class="row">
-          <label class="check"><input id="f-enabled" type="checkbox" checked> Let it Run</label>
-          <button class="act go" id="f-add" type="submit">Add</button>
+      <div class="foot">
+        <label class="check"><input id="f-enabled" type="checkbox" checked> Let it Run</label>
+        <div class="acts">
+          <button class="act" id="f-cancel" type="button">Cancel</button>
+          <button class="act go" id="f-add" type="submit">Add Job</button>
         </div>
       </div>
     </form>
