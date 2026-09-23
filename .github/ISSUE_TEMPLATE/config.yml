@@ -1,0 +1,11 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Security problem
+    url: https://github.com/luanAfons0/scheduler/security/advisories/new
+    about: Report it privately instead. A Job calls another Plugin's tool as you.
+  - name: The words this project uses
+    url: https://github.com/luanAfons0/scheduler/blob/main/CONTEXT.md
+    about: Job, When, Due, Grace, Run, Outcome, Late, Skipped.
+  - name: How to contribute
+    url: https://github.com/luanAfons0/scheduler/blob/main/CONTRIBUTING.md
+    about: Run the tests, try a change in FirstMate, open a pull request.

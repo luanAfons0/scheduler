@@ -1,0 +1,52 @@
+name: Feature request
+description: The Scheduler should be able to do something it cannot do today.
+labels: ['enhancement', 'needs-triage']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        The Scheduler is deliberately small: one tool of one Plugin, at a time
+        you choose. Cron, RRULE, retries, chains of Jobs and notifications are
+        refused on purpose, and that is not a judgement on the idea. Read
+        "What it will not do" in the
+        [README](https://github.com/luanAfons0/scheduler/blob/main/README.md),
+        [CONTEXT.md](https://github.com/luanAfons0/scheduler/blob/main/CONTEXT.md)
+        and the [ADRs](https://github.com/luanAfons0/scheduler/tree/main/docs/adr)
+        first.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: >
+        What you were trying to make a Job do, and where the Scheduler stopped
+        you. Describe the problem, not the solution you have in mind.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you would like it to do
+      description: >
+        If you have a shape in mind, give the Job as you wish you could write
+        it in `jobs.json`, or what the Page would show.
+    validations:
+      required: false
+
+  - type: textarea
+    id: today
+    attributes:
+      label: How you work around it today
+    validations:
+      required: false
+
+  - type: textarea
+    id: decisions
+    attributes:
+      label: Decisions it touches
+      description: >
+        Name any ADR your request contradicts, here or in FirstMate, if you
+        found one. Contradicting an ADR is allowed; doing it quietly is not.
+    validations:
+      required: false

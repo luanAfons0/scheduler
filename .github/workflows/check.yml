@@ -1,0 +1,30 @@
+# The two commands AGENTS.md already names, run by a machine on every change.
+#
+# There is no build step, because Node 24 runs the TypeScript directly. Every
+# test spawns the real Plugin Server against a temporary Plugin directory, so
+# nothing here needs a Host, a Registry or a running FirstMate.
+name: Check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    name: Types and tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run typecheck
+
+      - run: npm test
