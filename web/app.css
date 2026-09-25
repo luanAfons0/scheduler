@@ -668,7 +668,8 @@ pre,
   border-color: var(--accent);
 }
 
-.input:disabled {
+.input:disabled,
+.input:read-only:not(select) {
   color: var(--muted);
   background: var(--subtle);
 }

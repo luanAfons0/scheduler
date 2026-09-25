@@ -14,8 +14,13 @@ this file never redefines one.
 
 **Job**:
 A name, a time, and one tool of one Plugin to call at that time. It is the only
-thing a person creates here.
-_Avoid_: task, automation, rule, entry, cron job
+thing a person creates here. A person adds a Job, changes it, and removes it.
+_Avoid_: task, automation, rule, entry, cron job; edit or update (for change)
+
+**Job Name**:
+The name that identifies a Job. It never changes: a Job with another name is
+another Job.
+_Avoid_: id, key, slug
 
 **When**:
 The part of a Job that says at which times it is Due: every hour, every day,

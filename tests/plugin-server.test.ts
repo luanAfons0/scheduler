@@ -30,6 +30,7 @@ test('it names every tool it ships, each with a schema for its arguments', async
   };
   assert.deepEqual(tools.map((tool) => tool.name).sort(), [
     'add_job',
+    'change_job',
     'enable_job',
     'list_jobs',
     'list_plugin_tools',

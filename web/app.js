@@ -376,6 +376,7 @@ function card(job) {
       button('Run now', null, (event) =>
         write(event.currentTarget, 'running…', () => call('run_job', { name: job.name })),
       ),
+      button('Change', null, () => change(job)),
       removeButton(job),
     ]),
   ]);
@@ -447,6 +448,14 @@ function refresh() {
 /** The tools the Plugin named in the form last said it had. */
 let offered = [];
 
+/**
+ * The Job the form is changing, and the hash of the file it was read from, or
+ * null while the form adds. The hash is the one the form was filled from, not
+ * the newest one: a refresh under an open form must not let a change overwrite
+ * a hand edit nobody saw (ADR-0002).
+ */
+let changing = null;
+
 /** Only the fields this When actually has are on the form. */
 function shapeWhen() {
   const every = byId('f-every').value;
@@ -476,12 +485,7 @@ async function askForTools(node) {
   try {
     const answer = await call('list_plugin_tools', { plugin: plugin });
     offered = answer.tools || [];
-    const select = byId('f-tool');
-    select.disabled = offered.length === 0;
-    select.replaceChildren(
-      ...offered.map((tool) => el('option', { value: tool.name, text: tool.name })),
-    );
-    showSchema();
+    offer(offered);
     if (offered.length === 0) say('The Plugin named ' + plugin + ' has no tools.');
   } catch (fault) {
     // The Host's own sentence, unchanged: no Grant, not registered, Stopped,
@@ -502,7 +506,7 @@ function whenFromForm() {
   return when;
 }
 
-async function add(event) {
+async function submit(event) {
   event.preventDefault();
   say(null);
 
@@ -531,6 +535,13 @@ async function add(event) {
     missedRunGraceMinutes: Number(byId('f-grace').value),
   };
 
+  if (changing !== null) {
+    await write(byId('f-add'), 'changing…', async () => {
+      await call('change_job', { job: job, ifMatch: changing.hash });
+      compose(false);
+    });
+    return;
+  }
   await write(byId('f-add'), 'adding…', async () => {
     await call('add_job', { job: job, ifMatch: hash });
     byId('f-name').value = '';
@@ -539,14 +550,118 @@ async function add(event) {
   });
 }
 
-/** Show or hide the form. A Job added, or a Cancel, puts it away again. */
+/** Offer exactly these tools, with the one named selected. */
+function offer(tools, selected) {
+  const select = byId('f-tool');
+  select.disabled = tools.length === 0;
+  select.replaceChildren(
+    ...tools.map((tool) => el('option', { value: tool.name, text: tool.label || tool.name })),
+  );
+  if (selected !== undefined) select.value = selected;
+  showSchema();
+}
+
+/**
+ * Open the form on one Job, filled with what it is now. The name is the key
+ * to the Job's history and `enabled` belongs to the switch, so the form
+ * offers neither (ADR-0002).
+ */
+function change(job) {
+  changing = { job: job, hash: hash };
+  say(null);
+  byId('add-hd').textContent = 'Change ' + job.name;
+  byId('f-add').textContent = 'Change';
+  byId('f-name').value = job.name;
+  byId('f-name').readOnly = true;
+  byId('f-enabled-box').hidden = true;
+  byId('f-every').value = job.when.every;
+  byId('f-at').value = job.when.at || '09:00';
+  byId('f-day').value = job.when.day || 'monday';
+  byId('f-zone').value = job.when.timezone;
+  shapeWhen();
+  byId('f-plugin').value = job.plugin;
+  offered = [];
+  offer([{ name: job.tool }], job.tool);
+  byId('f-args').value = JSON.stringify(job.arguments, null, 2);
+  byId('f-grace').value = String(job.missedRunGraceMinutes);
+  compose(true);
+  toolsFor(job, changing);
+}
+
+/** A few words beside the tool select, or none. */
+function toolNote(text) {
+  const node = byId('f-tool-note');
+  node.textContent = text;
+  node.hidden = text === '';
+}
+
+/**
+ * Ask the Job's Plugin for its tools as the change starts, so another tool is
+ * one choice away. The form holds the current tool meanwhile and can be sent,
+ * because a change of time must not wait on another Plugin.
+ */
+async function toolsFor(job, mine) {
+  toolNote('asking…');
+  // An answer that comes back after the form moved on is about a form nobody
+  // is looking at, or about a Plugin the field no longer names.
+  const stale = () => changing !== mine || byId('f-plugin').value.trim() !== job.plugin;
+  try {
+    const answer = await call('list_plugin_tools', { plugin: job.plugin });
+    if (stale()) return;
+    offered = answer.tools || [];
+    if (offered.some((tool) => tool.name === job.tool)) {
+      offer(offered, job.tool);
+      return;
+    }
+    // Kept, and chosen, so nothing about the Job changes unless a person
+    // chooses another tool.
+    offer([...offered, { name: job.tool, label: job.tool + ' (not offered now)' }], job.tool);
+    say('The Plugin named ' + job.plugin + ' no longer offers the tool ' + job.tool + '.');
+  } catch (fault) {
+    // The Host's own sentence, unchanged, and the current tool kept, so the
+    // Job's time can still be changed while its Plugin is away.
+    if (!stale()) say(fault.message);
+  } finally {
+    if (changing === mine) toolNote('');
+  }
+}
+
+/** Put the form back to adding, empty, as the markup declares it. */
+function adding() {
+  changing = null;
+  byId('form').reset();
+  byId('add-hd').textContent = 'Add a Job';
+  byId('f-name').readOnly = false;
+  byId('f-enabled-box').hidden = false;
+  toolNote('');
+  byId('f-zone').value = HERE;
+  shapeWhen();
+  offered = [];
+  const select = byId('f-tool');
+  select.disabled = true;
+  select.replaceChildren(el('option', { value: '', text: 'List a Plugin’s tools first' }));
+  showSchema();
+}
+
+/**
+ * Show or hide the form. A Job added or changed, or a Cancel, puts it away
+ * again; a change also puts it back to adding, so the next New Job is empty.
+ */
 function compose(open) {
+  if (!open) {
+    if (changing !== null) adding();
+    // A write that put the form away leaves its button busy, and no redraw
+    // replaces it the way one replaces a card's, so it is made ready here.
+    byId('f-add').disabled = false;
+    byId('f-add').textContent = 'Add Job';
+  }
   byId('add').hidden = !open;
   byId('new-job').hidden = open;
   byId('new-job').setAttribute('aria-expanded', String(open));
   if (open) {
     byId('add').scrollIntoView({ block: 'start' });
-    byId('f-name').focus({ preventScroll: true });
+    // A name being changed is read-only, so the When is where a change starts.
+    byId(changing === null ? 'f-name' : 'f-every').focus({ preventScroll: true });
   } else {
     byId('new-job').focus({ preventScroll: true });
   }
@@ -554,11 +669,11 @@ function compose(open) {
 
 function start() {
   // The machine's own zone is the one a person means when they do not say.
-  byId('f-zone').value = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+  byId('f-zone').value = HERE;
   byId('f-every').addEventListener('change', shapeWhen);
   byId('f-tool').addEventListener('change', showSchema);
   byId('f-ask').addEventListener('click', (event) => askForTools(event.currentTarget));
-  byId('form').addEventListener('submit', add);
+  byId('form').addEventListener('submit', submit);
   byId('new-job').addEventListener('click', () => compose(true));
   byId('f-cancel').addEventListener('click', () => compose(false));
   byId('form').addEventListener('keydown', (event) => {

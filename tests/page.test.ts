@@ -72,3 +72,22 @@ test('the Page claims nothing about Jobs before it has asked', async (t) => {
     'the served markup already says there are no Jobs, which it cannot know until it has called list_jobs',
   );
 });
+
+test('every Job card offers a Change, and a change goes through change_job', async (t) => {
+  // No test drives a browser, so this reads the script the browser is served:
+  // the card draws the control, and the form sends what change_job takes.
+  const script = await readFile(join(WEB, 'app.js'), 'utf8');
+
+  assert.ok(script.includes("button('Change'"), 'no Job card offers a Change');
+  assert.ok(script.includes("call('change_job'"), 'the form never calls change_job');
+});
+
+test('a change asks the Plugin for its tools as it opens, and keeps a tool no longer offered', async (t) => {
+  const script = await readFile(join(WEB, 'app.js'), 'utf8');
+  const change = script.slice(script.indexOf('function change('), script.indexOf('function adding('));
+
+  assert.ok(change.includes('toolsFor(job'), 'the Change form does not ask for the tools');
+  assert.ok(change.includes("call('list_plugin_tools'"), 'the ask is not list_plugin_tools');
+  assert.ok(change.includes("'asking…'"), 'nothing says the ask is going');
+  assert.ok(change.includes("' (not offered now)'"), 'a tool no longer offered is not marked');
+});

@@ -147,6 +147,45 @@ export function toolsFor(held: Held, clock: Clock, config: Config): readonly Too
     },
 
     {
+      name: 'change_job',
+      description:
+        'Change one Job in the jobs file, under its Job Name. It keeps its Runs and whether it ' +
+        'is on; it takes its next Due time from now, and never Runs because of the change.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          job: {
+            type: 'object',
+            description:
+              'The whole Job, as add_job takes it. The name says which Job to change, and ' +
+              'enabled is ignored: enable_job turns a Job on or off.',
+          },
+          ifMatch: IF_MATCH,
+        },
+        required: ['job', 'ifMatch'],
+      },
+      call: async (given) => {
+        // The same check as add_job, before the hash, so both refuse the same
+        // bad Job in the same sentence and neither touches the file (ADR-0002).
+        const job = checkJob(given['job']);
+        return writing(given['ifMatch'], async (jobs) => {
+          const was = jobs.find((one) => one.name === job.name);
+          if (was === undefined) {
+            throw new Error(`No Job named "${job.name}" is in the jobs file.`);
+          }
+          // The name is the key to the Job's history, so it never changes, and
+          // a change never wakes a Job somebody turned off (ADR-0002).
+          const changed = { ...job, enabled: was.enabled };
+          await writeJobs(jobs.map((one) => (one.name === job.name ? changed : one)));
+          // Like a Job just added, it takes its next Due time from now, so a
+          // When moved to a time already past today does not Run at once.
+          await clock.freshen(job.name);
+          return told({ changed: job.name });
+        });
+      },
+    },
+
+    {
       name: 'enable_job',
       description: 'Turn one Job on or off. Off means it never comes Due.',
       inputSchema: {
