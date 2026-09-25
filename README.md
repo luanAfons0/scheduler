@@ -65,6 +65,11 @@ The Page makes this Job without an editor: name it, pick a When, name the
 Plugin, press **List its tools**, choose one, press **Add**. The file stays the
 truth either way.
 
+A Job changes in place too, under its name: `change_job` takes the whole Job,
+as `add_job` does, and keeps its Runs and whether it is on. A changed Job takes
+its next Due time from now, so a change never makes a Run (ADR-0002). A Job
+with another name is another Job: remove it and add it.
+
 Leave the machine off overnight and nothing is lost. The Job comes Due at 09:00,
 the Host comes back at 11:00, the Job Runs once and is marked **Late**. Come
 back on Monday after a long weekend and it Runs once, not three times — and if
@@ -149,10 +154,9 @@ Node 24 and TypeScript, no runtime dependencies, no build step, no framework.
 ## What it will not do
 
 Cron expressions, RRULE, or a subset of either. A form generated from a tool's
-input schema. Editing a Job in place — remove it and add it, or edit the file.
-More than one tool call in a Job, or conditions between Jobs. Retries of any
-kind. Notifications: the Page is where a Run lands, and it lands inside
-FirstMate's own window with the Plugin list one click away.
+input schema. More than one tool call in a Job, or conditions between Jobs.
+Retries of any kind. Notifications: the Page is where a Run lands, and it lands
+inside FirstMate's own window with the Plugin list one click away.
 
 Run history beyond the last ten Runs of each Job. The cap is fixed, so there is
 nothing to rotate and no log to grow.
