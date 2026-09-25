@@ -555,7 +555,7 @@ function offer(tools, selected) {
   const select = byId('f-tool');
   select.disabled = tools.length === 0;
   select.replaceChildren(
-    ...tools.map((tool) => el('option', { value: tool.name, text: tool.name })),
+    ...tools.map((tool) => el('option', { value: tool.name, text: tool.label || tool.name })),
   );
   if (selected !== undefined) select.value = selected;
   showSchema();
@@ -585,6 +585,45 @@ function change(job) {
   byId('f-args').value = JSON.stringify(job.arguments, null, 2);
   byId('f-grace').value = String(job.missedRunGraceMinutes);
   compose(true);
+  toolsFor(job, changing);
+}
+
+/** A few words beside the tool select, or none. */
+function toolNote(text) {
+  const node = byId('f-tool-note');
+  node.textContent = text;
+  node.hidden = text === '';
+}
+
+/**
+ * Ask the Job's Plugin for its tools as the change starts, so another tool is
+ * one choice away. The form holds the current tool meanwhile and can be sent,
+ * because a change of time must not wait on another Plugin.
+ */
+async function toolsFor(job, mine) {
+  toolNote('asking…');
+  // An answer that comes back after the form moved on is about a form nobody
+  // is looking at, or about a Plugin the field no longer names.
+  const stale = () => changing !== mine || byId('f-plugin').value.trim() !== job.plugin;
+  try {
+    const answer = await call('list_plugin_tools', { plugin: job.plugin });
+    if (stale()) return;
+    offered = answer.tools || [];
+    if (offered.some((tool) => tool.name === job.tool)) {
+      offer(offered, job.tool);
+      return;
+    }
+    // Kept, and chosen, so nothing about the Job changes unless a person
+    // chooses another tool.
+    offer([...offered, { name: job.tool, label: job.tool + ' (not offered now)' }], job.tool);
+    say('The Plugin named ' + job.plugin + ' no longer offers the tool ' + job.tool + '.');
+  } catch (fault) {
+    // The Host's own sentence, unchanged, and the current tool kept, so the
+    // Job's time can still be changed while its Plugin is away.
+    if (!stale()) say(fault.message);
+  } finally {
+    if (changing === mine) toolNote('');
+  }
 }
 
 /** Put the form back to adding, empty, as the markup declares it. */
@@ -592,9 +631,9 @@ function adding() {
   changing = null;
   byId('form').reset();
   byId('add-hd').textContent = 'Add a Job';
-  byId('f-add').textContent = 'Add Job';
   byId('f-name').readOnly = false;
   byId('f-enabled-box').hidden = false;
+  toolNote('');
   byId('f-zone').value = HERE;
   shapeWhen();
   offered = [];
@@ -609,7 +648,13 @@ function adding() {
  * again; a change also puts it back to adding, so the next New Job is empty.
  */
 function compose(open) {
-  if (!open && changing !== null) adding();
+  if (!open) {
+    if (changing !== null) adding();
+    // A write that put the form away leaves its button busy, and no redraw
+    // replaces it the way one replaces a card's, so it is made ready here.
+    byId('f-add').disabled = false;
+    byId('f-add').textContent = 'Add Job';
+  }
   byId('add').hidden = !open;
   byId('new-job').hidden = open;
   byId('new-job').setAttribute('aria-expanded', String(open));

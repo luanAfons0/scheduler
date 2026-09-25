@@ -65,10 +65,12 @@ The Page makes this Job without an editor: name it, pick a When, name the
 Plugin, press **List its tools**, choose one, press **Add**. The file stays the
 truth either way.
 
-A Job changes in place too, under its name: `change_job` takes the whole Job,
-as `add_job` does, and keeps its Runs and whether it is on. A changed Job takes
-its next Due time from now, so a change never makes a Run (ADR-0002). A Job
-with another name is another Job: remove it and add it.
+A Job changes in place too, under its name: press **Change** on its card, and
+the same form opens, filled, and asks the Plugin for its tools. Behind it,
+`change_job` takes the whole Job, as `add_job` does, and keeps its Runs and
+whether it is on. A changed Job takes its next Due time from now, so a change
+never makes a Run (ADR-0002). A Job with another name is another Job: remove it
+and add it.
 
 Leave the machine off overnight and nothing is lost. The Job comes Due at 09:00,
 the Host comes back at 11:00, the Job Runs once and is marked **Late**. Come
