@@ -151,6 +151,10 @@ in milliseconds rather than in minutes:
   under the Host's own ten-minute ceiling, so the Scheduler's timer decides and
   the Host's is the backstop.
 
+The Host starts `mcp.ts` with its own Node, on every system the App runs on.
+The `sh` wrapper `mcp` is for a `wsl` Place, where the Host starts `./mcp`; it
+reads `SCHEDULER_NODE` to find a Node 24.
+
 Node 24 and TypeScript, no runtime dependencies, no build step, no framework.
 
 ## What it will not do

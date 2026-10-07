@@ -51,11 +51,12 @@ npm test            # node --test: every test
 npm run typecheck   # tsc --noEmit
 ```
 
-Both must pass. The `Check` workflow runs both on `ubuntu-latest` for every
-pull request.
+Both must pass. The `Check` workflow runs both on `ubuntu-latest` and `windows-latest` for
+every pull request.
 
-Every test spawns the real Plugin Server, through `mcp`, against a temporary
-Plugin directory, and speaks MCP to it exactly as the Host does. Two
+Every test spawns the real Plugin Server, through `mcp.ts`, started the way the
+Host does (the running Node, no shell), against a temporary Plugin
+directory, and speaks MCP to it exactly as the Host does. Two
 properties keep that honest, and a change must keep both:
 
 - **No test imports a module of `src/`.** The seam is

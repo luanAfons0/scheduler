@@ -122,3 +122,17 @@ test('closing stdin is how the Host stops it, and it goes quietly', async (t) =>
   assert.equal(ending.code, 0);
   assert.equal(plugin.output(), '');
 });
+
+// The `sh` wrapper is what a `wsl` Place runs. Windows has no `sh` to run it.
+test(
+  'the wrapper `mcp` finds a Node 24 and starts the Plugin Server',
+  { skip: process.platform === 'win32' && 'the wrapper is `sh`, and a `wsl` Place runs it in Linux' },
+  async (t) => {
+    const plugin = await startPluginServer(t, { wrapper: true });
+
+    const answer = await plugin.handshake();
+
+    assert.equal(answer.error, undefined);
+    assert.equal((answer.result as { serverInfo: { name: string } }).serverInfo.name, 'scheduler');
+  },
+);
