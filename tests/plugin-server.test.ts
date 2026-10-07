@@ -4,6 +4,10 @@
  * Everything here goes through the one seam: the real `mcp` executable against
  * a temporary Plugin directory, spoken to as the Host speaks to it.
  */
+import { execFileSync } from 'node:child_process';
+import { mkdtemp, rm, symlink } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { strict as assert } from 'node:assert';
 import test from 'node:test';
 import { PROTOCOL_VERSION, startPluginServer, structureOf } from './helpers/plugin.ts';
@@ -126,13 +130,24 @@ test('closing stdin is how the Host stops it, and it goes quietly', async (t) =>
 // The `sh` wrapper is what a `wsl` Place runs. Windows has no `sh` to run it.
 test(
   'the wrapper `mcp` finds a Node 24 and starts the Plugin Server',
-  { skip: process.platform === 'win32' && 'the wrapper is `sh`, and a `wsl` Place runs it in Linux' },
+  {
+    skip: process.platform === 'win32' && 'the wrapper is `sh`, and a `wsl` Place runs it in Linux',
+  },
   async (t) => {
-    const plugin = await startPluginServer(t, { wrapper: true });
+    // A PATH with `dirname` and no Node, and a home with no nvm: the only Node
+    // 24 the wrapper can find is the one SCHEDULER_NODE names.
+    const bin = await mkdtemp(join(tmpdir(), 'scheduler-bin-'));
+    t.after(() => rm(bin, { recursive: true, force: true }));
+    const dirname = execFileSync('which', ['dirname'], { encoding: 'utf8' }).trim();
+    await symlink(dirname, join(bin, 'dirname'));
+    const plugin = await startPluginServer(t, {
+      wrapper: true,
+      env: { PATH: bin, HOME: bin, SCHEDULER_NODE: process.execPath },
+    });
 
     const answer = await plugin.handshake();
 
-    assert.equal(answer.error, undefined);
+    assert.equal(answer.error, undefined, plugin.output());
     assert.equal((answer.result as { serverInfo: { name: string } }).serverInfo.name, 'scheduler');
   },
 );
