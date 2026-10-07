@@ -25,12 +25,13 @@ Run every command from the repository root.
 | `node --test`                    | Every test. This is the whole suite.       |
 | `node --test tests/due.test.ts`  | One test file, while you work on it.       |
 | `npm install && npx tsc --noEmit` | Check the types. `npm run typecheck` is the same. |
-| `./mcp`                          | The Plugin Server, as the Host runs it.    |
+| `node mcp.ts`                    | The Plugin Server, as the Host runs it.    |
 
 Two environment variables move the clock, and both exist so a test can prove
 it in milliseconds: `SCHEDULER_TICK_MS` (default `60000`) and
-`SCHEDULER_CALL_MS` (default `300000`). `SCHEDULER_NODE` names the Node that
-`mcp` runs, when the Host's `PATH` has none new enough.
+`SCHEDULER_CALL_MS` (default `300000`). The Host runs `mcp.ts` with its own Node
+(`FIRSTMATE_NODE`). `SCHEDULER_NODE` is read only by the `sh` wrapper `mcp`,
+which a `wsl` Place runs, when its `PATH` has no Node new enough.
 
 `npm test` and `npm run typecheck` must both pass before you call work done.
 
@@ -49,7 +50,8 @@ it in milliseconds: `SCHEDULER_TICK_MS` (default `60000`) and
 ## Project structure
 
 ```
-mcp          the executable the Host runs: find a Node 24, run src/main.ts.
+mcp.ts       the entry point the Host runs with its own Node: import src/main.ts.
+mcp          the `sh` wrapper a `wsl` Place runs: find a Node 24, run src/main.ts.
 src/         the Plugin Server. Every file is one job.
   main.ts    start-up: read the Jobs and the Runs, start the clock, serve.
   config.ts  the two numbers that move the clock, and nothing else.

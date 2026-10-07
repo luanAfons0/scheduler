@@ -22,8 +22,14 @@ import type { TestContext } from 'node:test';
 const TESTS = dirname(dirname(fileURLToPath(import.meta.url)));
 const REPOSITORY = dirname(TESTS);
 
-/** The `mcp` executable the Host would run. Tests run the same file. */
-export const EXECUTABLE = join(REPOSITORY, 'mcp');
+/**
+ * The entry point the Host runs: its own Node with `mcp.ts`, in the Plugin
+ * directory, with no shell (FirstMate ADR-0028). Tests run the same file.
+ */
+export const ENTRY_POINT = join(REPOSITORY, 'mcp.ts');
+
+/** The `sh` wrapper the Host runs in a `wsl` Place. Only the wrapper test starts it. */
+export const WRAPPER = join(REPOSITORY, 'mcp');
 
 /** The protocol version the Host sends in its handshake. */
 export const PROTOCOL_VERSION = '2025-06-18';
@@ -57,6 +63,8 @@ export type StartOptions = {
   readonly files?: Readonly<Record<string, string>>;
   /** How the Host answers what this Plugin Server asks. */
   readonly host?: HostAnswer;
+  /** Start the `sh` wrapper `mcp`, as a `wsl` Place does, instead of `mcp.ts`. */
+  readonly wrapper?: boolean;
 };
 
 export type Started = {
@@ -88,13 +96,6 @@ export type Started = {
   stop(): void;
 };
 
-/** A temporary Plugin directory for one test, removed when the test ends. */
-export async function makeDirectory(t: TestContext): Promise<string> {
-  const directory = await mkdtemp(join(tmpdir(), 'scheduler-test-'));
-  t.after(() => rm(directory, { recursive: true, force: true }));
-  return directory;
-}
-
 /**
  * Start the real Plugin Server against a temporary Plugin directory. It is
  * stopped and the directory removed when the test ends, whatever the test did.
@@ -103,16 +104,20 @@ export async function startPluginServer(
   t: TestContext,
   options: StartOptions = {},
 ): Promise<Started> {
-  const directory = await makeDirectory(t);
+  const directory = await mkdtemp(join(tmpdir(), 'scheduler-test-'));
   for (const [name, content] of Object.entries(options.files ?? {})) {
     await writeFile(join(directory, name), content);
   }
 
-  const child = spawn(EXECUTABLE, [], {
+  const spawnOptions = {
     cwd: directory,
     env: { ...process.env, ...options.env },
-    stdio: ['pipe', 'pipe', 'pipe'],
-  });
+    stdio: ['pipe', 'pipe', 'pipe'] as ['pipe', 'pipe', 'pipe'],
+  };
+  // The Host's own Node is the running one here, and no shell is involved.
+  const child = options.wrapper
+    ? spawn(WRAPPER, [], spawnOptions)
+    : spawn(process.execPath, [ENTRY_POINT], spawnOptions);
 
   const lines: string[] = [];
   let output = '';
@@ -187,10 +192,14 @@ export async function startPluginServer(
     ).then((answer) => send({ jsonrpc: '2.0', id: message['id'], ...answer }));
   }
 
+  // One hook, in this order: the Plugin Server is gone before its directory
+  // is removed. Windows refuses to remove a directory that a running process
+  // holds as its working directory.
   t.after(async () => {
     child.stdin!.end();
     child.kill('SIGTERM');
     if (ending === null) await ended;
+    await rm(directory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
   });
 
   return {
