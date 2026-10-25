@@ -12,8 +12,9 @@
  * The Job Name is the key, the same key the jobs file uses. Renaming a Job is
  * a new Job with a fresh history, which is the truth.
  */
-import { readFile, rename, writeFile } from 'node:fs/promises';
+import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
+import { writeWhole } from './whole.ts';
 
 /** The state file, in the Plugin's own directory, which is where it is started. */
 export const STATE_FILE = 'state.json';
@@ -128,13 +129,8 @@ export function writeState(state: State, file: string = STATE_FILE): Promise<voi
   return next;
 }
 
-let through = 0;
-
-async function put(state: State, file: string): Promise<void> {
-  const path = resolve(file);
-  const own = `${path}.${process.pid}.${(through += 1)}.writing`;
-  await writeFile(own, `${JSON.stringify(state, null, 2)}\n`, { mode: 0o600 });
-  await rename(own, path);
+function put(state: State, file: string): Promise<void> {
+  return writeWhole(file, `${JSON.stringify(state, null, 2)}\n`, 0o600);
 }
 
 function sentence(fault: unknown): string {

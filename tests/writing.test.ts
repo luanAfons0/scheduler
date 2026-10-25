@@ -7,9 +7,11 @@
  * is picked up without anyone restarting anything.
  */
 import { strict as assert } from 'node:assert';
-import { readFile, writeFile } from 'node:fs/promises';
+import { constants } from 'node:fs';
+import { open, readdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import test from 'node:test';
+import { setTimeout as sleep } from 'node:timers/promises';
 import { startPluginServer, structureOf, type Answer, type Started } from './helpers/plugin.ts';
 
 const TICK_MS = '40';
@@ -339,3 +341,62 @@ test('the jobs file a reader picks up is whole, however hard it is read', async 
   for (const write of writes) assert.equal((await write).error, undefined);
   assert.equal((await jobsFileOf(plugin)).jobs.length, 12);
 });
+
+test('a half-written file left by a Plugin Server that died is removed at the next start', async (t) => {
+  const plugin = await startPluginServer(t, {
+    env: { SCHEDULER_TICK_MS: '30000' },
+    files: {
+      'jobs.json': JSON.stringify({ jobs: [JOB] }),
+      'jobs.json.4242.3.writing': '{ "jobs": [ ',
+      'state.json.4242.4.writing': '{ "jo',
+      'notes.writing': 'not the Plugin’s own',
+    },
+  });
+  await plugin.handshake();
+
+  assert.deepEqual((await readdir(plugin.directory)).sort(), ['jobs.json', 'notes.writing']);
+  assert.equal((await listed(plugin)).jobs.length, 1);
+});
+
+/**
+ * libuv's UV_FS_O_EXLOCK: open a file and share it with nobody, the way an
+ * antivirus or the search indexer may hold one for a moment. Only Windows has
+ * it.
+ */
+const SHARED_WITH_NOBODY = 0x10000000;
+
+test(
+  'a write lands even while something else holds the file it replaces for a moment',
+  { skip: process.platform !== 'win32' && 'only Windows refuses to replace a file that is held' },
+  async (t) => {
+    const plugin = await startPluginServer(t, {
+      env: { SCHEDULER_TICK_MS: '30000' },
+      files: {
+        'jobs.json': JSON.stringify({ jobs: [] }),
+        'state.json': JSON.stringify({ jobs: {} }),
+      },
+    });
+    await plugin.handshake();
+    const hash = (await listed(plugin)).hash;
+
+    // Adding a Job writes the jobs file, then the state file. The state file
+    // is the one held, because the jobs file is read first.
+    const state = join(plugin.directory, 'state.json');
+    const holder = await open(state, constants.O_RDONLY | SHARED_WITH_NOBODY);
+    const other = join(plugin.directory, 'other.json');
+    await writeFile(other, '{}');
+    // The hold is real: a rename over the file is refused while it lasts.
+    await assert.rejects(rename(other, state), { code: /^(EPERM|EACCES|EBUSY)$/ });
+
+    const released = sleep(300).then(() => holder.close());
+    const answer = await plugin.ask('tools/call', {
+      name: 'add_job',
+      arguments: { job: JOB, ifMatch: hash },
+    });
+    await released;
+
+    assert.equal(answer.error, undefined, JSON.stringify(answer.error));
+    const remembered = JSON.parse(await readFile(state, 'utf8')) as { jobs: object };
+    assert.ok('nexus-skills' in remembered.jobs, JSON.stringify(remembered));
+  },
+);

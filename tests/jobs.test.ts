@@ -63,6 +63,23 @@ test('a missing jobs file is a Plugin with no Jobs, not an error', async (t) => 
   assert.equal(plugin.output(), '');
 });
 
+test('a jobs file saved with a byte order mark, as an editor on Windows may, is read like any other', async (t) => {
+  const plugin = await startPluginServer(t, {
+    files: { 'jobs.json': `\uFEFF${JSON.stringify({ jobs: [NEXUS_SKILLS] }, null, 2)}` },
+  });
+  await plugin.handshake();
+
+  const answer = await plugin.ask('tools/call', { name: 'list_jobs', arguments: {} });
+
+  const listed = structureOf(answer) as { problem: string | null; jobs: { name: string }[] };
+  assert.equal(listed.problem, null);
+  assert.deepEqual(
+    listed.jobs.map((job) => job.name),
+    ['nexus-skills'],
+  );
+  assert.equal(plugin.output(), '');
+});
+
 test('a jobs file that is not valid JSON stops the Plugin Server with a sentence naming it', async (t) => {
   const { code, said } = await refusedFile(t, '{ "jobs": [ ');
 

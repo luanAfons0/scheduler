@@ -15,9 +15,10 @@
  * subtly wrong.
  */
 import { createHash } from 'node:crypto';
-import { readFile, rename, writeFile } from 'node:fs/promises';
+import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { DAYS, EVERY, isTimeOfDay, knowsZone, type Day, type Every, type When } from './due.ts';
+import { writeWhole } from './whole.ts';
 
 /** The jobs file, in the Plugin's own directory, which is where it is started. */
 export const JOBS_FILE = 'jobs.json';
@@ -53,6 +54,10 @@ export async function readJobs(file: string = JOBS_FILE): Promise<readonly Job[]
     if ((fault as NodeJS.ErrnoException).code === 'ENOENT') return [];
     throw new Error(`The jobs file at ${path} could not be read: ${sentence(fault)}`);
   }
+
+  // Notepad and PowerShell on Windows may save a file with a byte order mark,
+  // which JSON.parse refuses. It is not part of anything a person wrote.
+  if (text.startsWith('\uFEFF')) text = text.slice(1);
 
   let held: unknown;
   try {
@@ -112,16 +117,9 @@ export async function hashOfJobs(file: string = JOBS_FILE): Promise<string> {
  * The move is what makes a reader safe: a rename over an existing file is one
  * step, so nobody ever opens this file and finds half a write.
  */
-export async function writeJobs(jobs: readonly Job[], file: string = JOBS_FILE): Promise<void> {
-  const path = resolve(file);
-  // A file of this write's own, so that two writers never share a half-written
-  // one and rename each other's work into place.
-  const own = `${path}.${process.pid}.${(through += 1)}.writing`;
-  await writeFile(own, `${JSON.stringify({ jobs }, null, 2)}\n`);
-  await rename(own, path);
+export function writeJobs(jobs: readonly Job[], file: string = JOBS_FILE): Promise<void> {
+  return writeWhole(file, `${JSON.stringify({ jobs }, null, 2)}\n`);
 }
-
-let through = 0;
 
 function jobOf(where: string, held: unknown): Job {
   const given = asObject(held);
