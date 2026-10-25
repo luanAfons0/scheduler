@@ -60,6 +60,7 @@ src/         the Plugin Server. Every file is one job.
   due.ts     when a When next comes Due, on the clock of the Job's own zone.
   clock.ts   the sixty-second tick, and the one runner behind it.
   state.ts   the Runs this Plugin remembers, in state.json.
+  whole.ts   a file written whole and moved into place, and its leftovers.
   tools.ts   the tools this Plugin ships, for the Page and other Plugins.
   bus.ts     the Tool Bus, from this end of the pipe.
   mcp.ts     the one connection to the Host: MCP over stdio.

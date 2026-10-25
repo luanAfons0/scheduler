@@ -12,10 +12,11 @@ import { receive } from './bus.ts';
 import { startClock } from './clock.ts';
 import { readConfig } from './config.ts';
 import { hold } from './held.ts';
-import { readJobs } from './jobs.ts';
+import { JOBS_FILE, readJobs } from './jobs.ts';
 import { sentenceFor, serve } from './mcp.ts';
-import { readState } from './state.ts';
+import { readState, STATE_FILE } from './state.ts';
 import { toolsFor } from './tools.ts';
+import { clearLeftovers } from './whole.ts';
 
 // A jobs file, a state file or an environment variable that is wrong when the
 // Plugin Server starts is one sentence and a non-zero exit: the Index Page
@@ -37,6 +38,10 @@ const config = (() => {
     return stop(fault);
   }
 })();
+
+// A Plugin Server that died halfway through a write left its own file beside
+// the real one. The real one is still whole, so the leftover is only clutter.
+await clearLeftovers([JOBS_FILE, STATE_FILE]);
 
 const held = hold(await readJobs().catch(stop));
 const clock = startClock(held, await readState().catch(stop), config);

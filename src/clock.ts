@@ -183,9 +183,9 @@ export function startClock(held: Held, remembered: State, config: Config): Clock
       // Later than one tick after its Due time means the Host was not up when
       // the time arrived. Within one tick is simply the clock doing its job.
       inFlight.set(job.name, due);
-      void through(() => run(job, due, lateBy > config.tickMs)).finally(() =>
-        inFlight.delete(job.name),
-      );
+      void through(() => run(job, due, lateBy > config.tickMs))
+        .catch((fault) => said(`the Run of the Job ${job.name} went wrong`, fault))
+        .finally(() => inFlight.delete(job.name));
     }
 
     if (moved) await writeState(state);
@@ -193,7 +193,9 @@ export function startClock(held: Held, remembered: State, config: Config): Clock
 
   function wake(): void {
     timer = setTimeout(() => {
-      void tick().finally(wake);
+      void tick()
+        .catch((fault) => said('a tick went wrong', fault))
+        .finally(wake);
     }, config.tickMs);
     // The tick must never be the reason this process stays up. The Host
     // closing stdin is what ends it.
@@ -225,6 +227,18 @@ export function startClock(held: Held, remembered: State, config: Config): Clock
       timer = null;
     },
   };
+}
+
+/**
+ * One line in the journal, and the clock keeps going.
+ *
+ * A state file that cannot be written now may be written on the next tick,
+ * and a fault nobody caught ends the whole process: every Job would stop
+ * because one write failed.
+ */
+function said(what: string, fault: unknown): void {
+  const why = fault instanceof Error ? fault.message : String(fault);
+  process.stderr.write(`scheduler: ${what}, and the clock keeps going: ${why}\n`);
 }
 
 /** A Job that came Due and was not Run. It is recorded, never silent. */

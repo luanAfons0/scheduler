@@ -29,9 +29,15 @@ Node 24 or newer, npm and Git. Node runs the TypeScript directly, so there is
 nothing to build. For changes to the Page, a running
 [FirstMate](https://github.com/luanAfons0/FirstMate) too.
 
-The Scheduler is developed and tested on WSL Debian, where FirstMate runs. The
-clock is plain Node (ADR-0001), so macOS and native Windows are untried rather
-than unsupported. If you run it there, open an issue with what breaks.
+The Scheduler is developed on WSL Debian, where FirstMate runs. The clock is
+plain Node (ADR-0001), and the `Check` workflow runs every test on Linux and on
+native Windows, so both are supported. macOS is untried rather than
+unsupported. If you run it there, open an issue with what breaks.
+
+On Windows, the `0o600` mode the state file is written with does nothing. The
+Jobs and the Runs there are only as private as the access list of the Plugin
+directory, which under your own user profile admits you, SYSTEM and the
+Administrators, and nobody else.
 
 ## Get the code
 

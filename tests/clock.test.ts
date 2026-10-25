@@ -10,7 +10,7 @@
  * answers `firstmate/tools/call` with whatever the case is about.
  */
 import { strict as assert } from 'node:assert';
-import { readFile } from 'node:fs/promises';
+import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import test from 'node:test';
 import { startPluginServer, structureOf, type Answer, type Question } from './helpers/plugin.ts';
@@ -319,4 +319,58 @@ test('the state file a reader picks up is whole, and is valid JSON at every mome
 
   const run = await until(lastRunOf(plugin, 'nexus-skills'), 'the Job ran');
   assert.equal(run.outcome, 'ok');
+});
+
+test('a state file that cannot be written on a tick is one line in the journal, and the clock keeps going', async (t) => {
+  const plugin = await startPluginServer(t, {
+    env: { SCHEDULER_TICK_MS: TICK_MS },
+    files: { 'jobs.json': JSON.stringify({ jobs: [] }) },
+  });
+  await plugin.handshake();
+
+  // A directory where the state file goes, so no write can move a file there.
+  await mkdir(join(plugin.directory, 'state.json'));
+  // A Job seen for the first time is written down on the next tick.
+  await writeFile(join(plugin.directory, 'jobs.json'), JSON.stringify({ jobs: [JOB] }));
+
+  await until(
+    async () => (plugin.output().includes('a tick went wrong') ? true : null),
+    'the journal was told',
+  );
+  assert.ok(plugin.output().includes('state.json'), plugin.output());
+
+  await new Promise((done) => setTimeout(done, 200));
+  const alive = await plugin.ask('tools/list');
+  assert.equal(alive.error, undefined, plugin.output());
+});
+
+test('a Run whose Outcome cannot be written is one line in the journal, and the clock keeps going', async (t) => {
+  // The Host holds its answer until the state file can no longer be written.
+  const held: { answer?: (answer: Answer) => void; asked?: () => void } = {};
+  const asked = new Promise<void>((done) => (held.asked = done));
+  const plugin = await startPluginServer(t, {
+    env: { SCHEDULER_TICK_MS: TICK_MS },
+    files: filesFor([JOB], longAgo('nexus-skills')),
+    host: () =>
+      new Promise<Answer>((done) => {
+        held.answer = done;
+        held.asked?.();
+      }),
+  });
+  await plugin.handshake();
+
+  await asked;
+  const state = join(plugin.directory, 'state.json');
+  await rm(state);
+  await mkdir(state);
+  held.answer?.(answered('done'));
+
+  await until(
+    async () => (plugin.output().includes('nexus-skills went wrong') ? true : null),
+    'the journal was told',
+  );
+
+  await new Promise((done) => setTimeout(done, 200));
+  const alive = await plugin.ask('tools/list');
+  assert.equal(alive.error, undefined, plugin.output());
 });

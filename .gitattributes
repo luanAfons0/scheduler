@@ -1,0 +1,6 @@
+# The repository is written with LF endings, and a Windows checkout keeps them,
+# so that a test reads the same bytes on every runner. The `sh` wrapper `mcp`
+# has no extension to be known by, and one CR in it breaks `sh` in a `wsl`
+# Place, so it is named as well.
+* text=auto eol=lf
+mcp text eol=lf
