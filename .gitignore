@@ -7,3 +7,6 @@ node_modules/
 # the Host runs, these are this machine's Jobs and Runs, not the project's.
 jobs.json
 state.json
+
+# The Plugin Release, built by `npm run release` and shipped by the release workflow.
+release/

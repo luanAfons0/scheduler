@@ -1,6 +1,7 @@
 # The two commands AGENTS.md already names, run by a machine on every change.
 #
-# There is no build step, because Node 24 runs the TypeScript directly. Every
+# There is no build step, because Node 24 runs the TypeScript directly. The
+# tests build the Plugin Release themselves (tests/release.test.ts). Every
 # test spawns the real Plugin Server against a temporary Plugin directory, so
 # nothing here needs a Host, a Registry or a running FirstMate.
 name: Check

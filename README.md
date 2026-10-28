@@ -155,7 +155,7 @@ The Host starts `mcp.ts` with its own Node, on every system the App runs on.
 The `sh` wrapper `mcp` is for a `wsl` Place, where the Host starts `./mcp`; it
 reads `SCHEDULER_NODE` to find a Node 24.
 
-Node 24 and TypeScript, no runtime dependencies, no build step, no framework.
+Node 24 and TypeScript, no runtime dependencies, no build step in the repository (the Plugin Release is built), no framework.
 
 ## What it will not do
 

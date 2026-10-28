@@ -13,7 +13,7 @@
  * the directory the Plugin reads and writes its files in is temporary.
  */
 import { spawn, type ChildProcess } from 'node:child_process';
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { cp, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -65,6 +65,13 @@ export type StartOptions = {
   readonly host?: HostAnswer;
   /** Start the `sh` wrapper `mcp`, as a `wsl` Place does, instead of `mcp.ts`. */
   readonly wrapper?: boolean;
+  /**
+   * A built Plugin Release folder. It is copied into the temporary Plugin
+   * directory, which is where `install` puts its files, and the Plugin Server
+   * started is its `mcp.js` (or its `mcp` with `wrapper`) in place of the
+   * source.
+   */
+  readonly release?: string;
 };
 
 export type Started = {
@@ -105,6 +112,7 @@ export async function startPluginServer(
   options: StartOptions = {},
 ): Promise<Started> {
   const directory = await mkdtemp(join(tmpdir(), 'scheduler-test-'));
+  if (options.release !== undefined) await cp(options.release, directory, { recursive: true });
   for (const [name, content] of Object.entries(options.files ?? {})) {
     await writeFile(join(directory, name), content);
   }
@@ -115,9 +123,10 @@ export async function startPluginServer(
     stdio: ['pipe', 'pipe', 'pipe'] as ['pipe', 'pipe', 'pipe'],
   };
   // The Host's own Node is the running one here, and no shell is involved.
+  const built = options.release !== undefined;
   const child = options.wrapper
-    ? spawn(WRAPPER, [], spawnOptions)
-    : spawn(process.execPath, [ENTRY_POINT], spawnOptions);
+    ? spawn(built ? join(directory, 'mcp') : WRAPPER, [], spawnOptions)
+    : spawn(process.execPath, [built ? join(directory, 'mcp.js') : ENTRY_POINT], spawnOptions);
 
   const lines: string[] = [];
   let output = '';
