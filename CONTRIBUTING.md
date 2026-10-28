@@ -26,7 +26,8 @@ something nobody asked for, or quietly fails to do what they did.
 ## What you need
 
 Node 24 or newer, npm and Git. Node runs the TypeScript directly, so there is
-nothing to build. For changes to the Page, a running
+nothing to build; only the Plugin Release is built, by `npm run release`
+(ADR-0003). For changes to the Page, a running
 [FirstMate](https://github.com/luanAfons0/FirstMate) too.
 
 The Scheduler is developed on WSL Debian, where FirstMate runs. The clock is

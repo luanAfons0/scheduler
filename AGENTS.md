@@ -26,6 +26,7 @@ Run every command from the repository root.
 | `node --test tests/due.test.ts`  | One test file, while you work on it.       |
 | `npm install && npx tsc --noEmit` | Check the types. `npm run typecheck` is the same. |
 | `node mcp.ts`                    | The Plugin Server, as the Host runs it.    |
+| `npm run release`                | Build the Plugin Release into `release/` (ADR-0003). |
 
 Two environment variables move the clock, and both exist so a test can prove
 it in milliseconds: `SCHEDULER_TICK_MS` (default `60000`) and
@@ -37,8 +38,10 @@ which a `wsl` Place runs, when its `PATH` has no Node new enough.
 
 ## Tech stack
 
-- **Node 24**, which runs TypeScript with no build step. No bundler, no
-  transpiler, no watcher.
+- **Node 24**, which runs TypeScript with no build step. The repository has no
+  build step; the Plugin Release is built (`npm run release`, ADR-0003), with
+  `tsdown`, a dev dependency used on the publish path alone. No transpiler, no
+  watcher.
 - **TypeScript 5.8**, `strict`, `noUncheckedIndexedAccess`,
   `erasableSyntaxOnly`. `typescript` is a dev dependency, used only to check
   the types.
@@ -65,6 +68,7 @@ src/         the Plugin Server. Every file is one job.
   bus.ts     the Tool Bus, from this end of the pipe.
   mcp.ts     the one connection to the Host: MCP over stdio.
 web/         the Plugin Page: index.html, app.css, app.js.
+scripts/     release.ts: the release build, run by `npm run release`.
 tests/       one file per behaviour, plus helpers/plugin.ts.
 docs/adr/    the decisions that are expensive to reverse.
 docs/agents/ how an agent works in this repo. See "Agent skills" below.
